@@ -1,11 +1,8 @@
 import type { Metadata } from "next"
-import { Geist } from "next/font/google"
 import { Toaster } from "sonner"
 import BottomNav from "@/components/shared/BottomNav"
 import CartSheet from "@/components/cart/CartSheet"
 import "./globals.css"
-
-const geist = Geist({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Amazon Now",
@@ -15,7 +12,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${geist.className} bg-[#f0f2f2]`}>
+      <head>
+        <script src="https://cdn.tailwindcss.com"></script>
+      </head>
+      <body className="font-sans bg-[#f0f2f2]">
         {/* Phone frame */}
         <div className="flex justify-center min-h-screen">
           <div className="w-full max-w-[430px] min-h-screen bg-[#f0f2f2] relative flex flex-col shadow-2xl">
