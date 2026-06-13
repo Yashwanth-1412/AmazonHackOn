@@ -1,6 +1,7 @@
 "use client"
 
 import { useCartStore } from "@/store/cart"
+import ProductImage from "@/components/shared/ProductImage"
 import type { Product } from "@/types"
 
 interface ProductCardProps {
@@ -18,9 +19,15 @@ export default function ProductCard({
 
   const cartItem = items.find((i) => i.product.id === product.id)
   const qty = cartItem?.quantity ?? 0
-  const discount = Math.round(((product.mrp - product.price) / product.mrp) * 100)
+  const discount = product.mrp > product.price
+    ? Math.round(((product.mrp - product.price) / product.mrp) * 100)
+    : 0
 
   const isSmall = size === "sm"
+  const imgSize = isSmall ? 52 : 64
+
+  // Detect if image field is a URL or emoji
+  const isUrl = product.image?.startsWith("http")
 
   return (
     <div
@@ -29,20 +36,32 @@ export default function ProductCard({
       }`}
     >
       {/* Image area */}
-      <div className="relative bg-[#f8f8f8] flex items-center justify-center" style={{ height: isSmall ? 80 : 96 }}>
-        <span className={isSmall ? "text-4xl" : "text-5xl"}>{product.image}</span>
+      <div
+        className="relative bg-[#f8f8f8] flex items-center justify-center"
+        style={{ height: isSmall ? 80 : 96 }}
+      >
+        {isUrl ? (
+          <ProductImage
+            name={product.name}
+            brand={product.brand}
+            category={product.category}
+            logoUrl={product.image}
+            size={imgSize}
+          />
+        ) : product.image ? (
+          <span className={isSmall ? "text-4xl" : "text-5xl"}>{product.image}</span>
+        ) : (
+          <ProductImage
+            name={product.name}
+            brand={product.brand}
+            category={product.category}
+            size={imgSize}
+          />
+        )}
 
-        {/* Discount badge */}
         {showDiscount && discount > 0 && (
           <div className="absolute top-1.5 left-1.5 bg-[#cc0c39] text-white text-[9px] font-black px-1.5 py-0.5 rounded-md leading-tight">
             {discount}%<br />OFF
-          </div>
-        )}
-
-        {/* Deal label */}
-        {product.tags.includes("steal-deal") && (
-          <div className="absolute bottom-0 left-0 right-0 bg-[#067d62] text-white text-[9px] font-bold py-0.5 text-center">
-            Steal Deal
           </div>
         )}
       </div>
@@ -55,7 +74,6 @@ export default function ProductCard({
         </p>
         <p className="text-[10px] text-[#888c8c] mt-0.5">{product.variant}</p>
 
-        {/* Price + Add button */}
         <div className="flex items-center justify-between mt-2">
           <div>
             <span className="text-[13px] font-black text-[#0f1111]">₹{product.price}</span>
