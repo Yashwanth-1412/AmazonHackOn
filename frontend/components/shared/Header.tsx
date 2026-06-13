@@ -4,7 +4,13 @@ import { ShoppingCart, MapPin, ChevronDown, User, Bell } from "lucide-react"
 import { useCartStore } from "@/store/cart"
 import { useNotificationStore } from "@/store/notifications"
 
-export default function Header() {
+export default function Header({
+  userName,
+  location,
+}: {
+  userName?: string
+  location?: string
+}) {
   const { totalItems, toggleCart } = useCartStore()
   const { items: notifItems } = useNotificationStore()
   const count = totalItems()
@@ -72,7 +78,7 @@ export default function Header() {
         <button className="flex items-center gap-1 min-w-0">
           <MapPin size={12} className="text-[#565959] shrink-0" />
           <span className="text-[12px] text-[#565959] truncate">
-            Deliver to A-1101, A block, sri aditya athena, ma...
+            {location ?? "Deliver to your location"}
           </span>
           <ChevronDown size={13} className="text-[#565959] shrink-0" />
         </button>

@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+from app.routers import products, home, orders
 
 app = FastAPI(
     title="Amazon Now API",
@@ -16,6 +17,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Routers ───────────────────────────────────────────────────────────────────
+app.include_router(products.router)
+app.include_router(home.router)
+app.include_router(orders.router)
 
 
 @app.get("/health")
