@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     # Optional: small/fast model for lightweight tasks (reminders, scoring)
     LLM_SMALL_MODEL: str = Field(default="")
 
+    # ── DynamoDB ─────────────────────────────────────────────────────────────
+    DYNAMODB_ENDPOINT: str = Field(default="http://localhost:8001")
+    DYNAMODB_REGION: str = Field(default="ap-south-1")
+    DYNAMODB_ACCESS_KEY: str = Field(default="local")
+    DYNAMODB_SECRET_KEY: str = Field(default="local")
+
     # ── App ───────────────────────────────────────────────────────────────────
     APP_ENV: str = Field(default="development")
     APP_PORT: int = Field(default=8000)
