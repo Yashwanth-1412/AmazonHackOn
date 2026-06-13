@@ -108,7 +108,7 @@ TABLES = [
 
 def create_tables():
     client = get_dynamodb_client()
-    existing = {t["TableName"] for t in client.list_tables()["TableNames"]}
+    existing = set(client.list_tables()["TableNames"])
 
     for table_def in TABLES:
         name = table_def["TableName"]
