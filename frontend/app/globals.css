@@ -1,0 +1,51 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* ── Amazon Now Light Theme ─────────────────────────────── */
+  --background: #f0f2f2;
+  --surface: #ffffff;
+  --surface-2: #f8f8f8;
+  --border: #e3e6e6;
+  --border-light: #f0f2f2;
+
+  --text-primary: #0f1111;
+  --text-secondary: #565959;
+  --text-muted: #888c8c;
+
+  /* Amazon Brand Colors */
+  --amazon-orange: #ff9900;
+  --amazon-dark: #232f3e;
+  --amazon-blue: #0066c0;
+  --amazon-yellow: #febd69;
+  --amazon-green: #067d62;
+  --amazon-red: #cc0c39;
+  --amazon-light-blue: #e8f4fd;
+
+  /* Delivery badge */
+  --badge-yellow: #f0c040;
+
+  /* Accent */
+  --accent-green: #4caf50;
+  --danger: #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--background);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Hide all scrollbars */
+::-webkit-scrollbar { width: 0px; height: 0px; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

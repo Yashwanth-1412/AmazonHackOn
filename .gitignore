@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+.pnp
+
+# Next.js
+frontend/.next/
+frontend/out/
+frontend/build/
+
+# Python / uv
+backend/__pycache__/
+backend/**/__pycache__/
+backend/.venv/
+backend/venv/
+*.pyc
+*.pyo
+backend/.python-version
+
+# Environment — never commit secrets
+.env
+.env.local
+!.env.example
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
