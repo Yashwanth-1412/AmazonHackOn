@@ -8,14 +8,12 @@ import RecognizedItemCard from "./RecognizedItemCard"
 import BrandPicker from "./BrandPicker"
 
 export default function VoicePopup() {
-  const {
-    isRecording,
-    isProcessing,
-    isConnected,
-    interimTranscript,
-    recognizedProducts,
-    finalTranscript,
-  } = useVoiceStore((s) => s)
+  const isRecording = useVoiceStore((s) => s.isRecording)
+  const isProcessing = useVoiceStore((s) => s.isProcessing)
+  const isConnected = useVoiceStore((s) => s.isConnected)
+  const interimTranscript = useVoiceStore((s) => s.interimTranscript)
+  const recognizedProducts = useVoiceStore((s) => s.recognizedProducts)
+  const finalTranscript = useVoiceStore((s) => s.finalTranscript)
 
   const transcriptEndRef = useRef<HTMLDivElement>(null)
   const hasProducts = recognizedProducts.length > 0

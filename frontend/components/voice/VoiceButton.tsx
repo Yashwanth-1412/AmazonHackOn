@@ -7,7 +7,9 @@ import { useVoiceStore } from "@/store/voice"
 import { useVoiceWebSocket } from "@/hooks/useVoiceWebSocket"
 
 export default function VoiceButton() {
-  const { isRecording, isProcessing, isConnected } = useVoiceStore((s) => s)
+  const isRecording = useVoiceStore((s) => s.isRecording)
+  const isProcessing = useVoiceStore((s) => s.isProcessing)
+  const isConnected = useVoiceStore((s) => s.isConnected)
   const { startRecording, stopRecording } = useVoiceWebSocket()
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const isHolding = useRef(false)

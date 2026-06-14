@@ -5,7 +5,10 @@ import { X } from "lucide-react"
 import { useVoiceStore } from "@/store/voice"
 
 export default function BrandPicker() {
-  const { pendingBrandChoice, setPendingBrandChoice, _sendJson, confirmBrandChoice } = useVoiceStore((s) => s)
+  const pendingBrandChoice = useVoiceStore((s) => s.pendingBrandChoice)
+  const setPendingBrandChoice = useVoiceStore((s) => s.setPendingBrandChoice)
+  const _sendJson = useVoiceStore((s) => s._sendJson)
+  const confirmBrandChoice = useVoiceStore((s) => s.confirmBrandChoice)
 
   if (!pendingBrandChoice) return null
 

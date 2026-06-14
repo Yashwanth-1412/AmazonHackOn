@@ -16,7 +16,21 @@ export function useVoiceWebSocket() {
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const userRef = useRef("u001")
 
-  const store = useVoiceStore((s) => s)
+  const setSendJson = useVoiceStore((s) => s.setSendJson)
+  const setConnected = useVoiceStore((s) => s.setConnected)
+  const setRecording = useVoiceStore((s) => s.setRecording)
+  const setProcessing = useVoiceStore((s) => s.setProcessing)
+  const setInterimTranscript = useVoiceStore((s) => s.setInterimTranscript)
+  const setFinalTranscript = useVoiceStore((s) => s.setFinalTranscript)
+  const clearRecognizedProducts = useVoiceStore((s) => s.clearRecognizedProducts)
+  const addRecognizedProduct = useVoiceStore((s) => s.addRecognizedProduct)
+  const setPendingBrandChoice = useVoiceStore((s) => s.setPendingBrandChoice)
+  const confirmBrandChoice = useVoiceStore((s) => s.confirmBrandChoice)
+  const resetStore = useVoiceStore((s) => s.reset)
+  
+  const isConnected = useVoiceStore((s) => s.isConnected)
+  const isRecording = useVoiceStore((s) => s.isRecording)
+
   const addItem = useCartStore((s) => s.addItem)
   const openCart = useCartStore((s) => s.openCart)
 
@@ -28,16 +42,16 @@ export function useVoiceWebSocket() {
 
   // Share sendJson with other components via store
   useEffect(() => {
-    store.setSendJson(sendJson)
-    return () => { store.setSendJson(null) }
-  }, [sendJson, store])
+    setSendJson(sendJson)
+    return () => { setSendJson(null) }
+  }, [sendJson, setSendJson])
 
   const startRecording = useCallback(async () => {
-    store.setRecording(true)
-    store.setProcessing(true)
-    store.setInterimTranscript("")
-    store.setFinalTranscript("")
-    store.clearRecognizedProducts()
+    setRecording(true)
+    setProcessing(true)
+    setInterimTranscript("")
+    setFinalTranscript("")
+    clearRecognizedProducts()
 
     // Connect WebSocket
     const ws = new WebSocket(
@@ -45,8 +59,8 @@ export function useVoiceWebSocket() {
     )
 
     ws.onopen = () => {
-      store.setConnected(true)
-      store.setProcessing(false)
+      setConnected(true)
+      setProcessing(false)
 
       // Start audio capture
       const audio = new AudioCapture({
@@ -65,8 +79,8 @@ export function useVoiceWebSocket() {
           audioRef.current = audio
         })
         .catch(() => {
-          store.setRecording(false)
-          store.setConnected(false)
+          setRecording(false)
+          setConnected(false)
           toast.error("Could not access microphone")
         })
     }
@@ -84,11 +98,11 @@ export function useVoiceWebSocket() {
 
           case "interim":
           case "interim_transcript":
-            store.setInterimTranscript(data.transcript)
+            setInterimTranscript(data.transcript)
             break
 
           case "final":
-            store.setFinalTranscript(data.transcript)
+            setFinalTranscript(data.transcript)
             break
 
           case "product_recognized": {
@@ -106,7 +120,7 @@ export function useVoiceWebSocket() {
               brand_options: { brand: string; confidence: number; reason: string }[]
             }
 
-            store.addRecognizedProduct({
+            addRecognizedProduct({
               product_id: product.product_id,
               name: product.name,
               brand: product.brand,
@@ -149,7 +163,7 @@ export function useVoiceWebSocket() {
           }
 
           case "brand_confirmation":
-            store.setPendingBrandChoice({
+            setPendingBrandChoice({
               product_id: data.product_id,
               product_name: data.product_name,
               recommended_brand: data.recommended_brand,
@@ -180,22 +194,34 @@ export function useVoiceWebSocket() {
     }
 
     ws.onclose = () => {
-      store.setConnected(false)
-      store.setProcessing(false)
+      setConnected(false)
+      setProcessing(false)
       wsRef.current = null
     }
 
     ws.onerror = () => {
-      store.setConnected(false)
-      store.setProcessing(false)
+      setConnected(false)
+      setProcessing(false)
       toast.error("Voice connection failed")
     }
 
     wsRef.current = ws
-  }, [store, addItem, openCart, sendJson])
+  }, [
+    setRecording,
+    setProcessing,
+    setInterimTranscript,
+    setFinalTranscript,
+    clearRecognizedProducts,
+    setConnected,
+    sendJson,
+    addRecognizedProduct,
+    addItem,
+    openCart,
+    setPendingBrandChoice
+  ])
 
   const stopRecording = useCallback(() => {
-    store.setRecording(false)
+    setRecording(false)
 
     if (audioRef.current) {
       audioRef.current.stop()
@@ -211,11 +237,11 @@ export function useVoiceWebSocket() {
     // Keep recognized products visible for a few seconds
     clearTimeout(reconnectTimer.current)
     const timer = setTimeout(() => {
-      store.clearRecognizedProducts()
-      store.reset()
+      clearRecognizedProducts()
+      resetStore()
     }, 5000)
     reconnectTimer.current = timer
-  }, [store, sendJson])
+  }, [setRecording, sendJson, clearRecognizedProducts, resetStore])
 
   const confirmBrand = useCallback(
     (productId: string, selectedBrand: string) => {
@@ -224,11 +250,11 @@ export function useVoiceWebSocket() {
         product_id: productId,
         brand: selectedBrand,
       })
-      store.confirmBrandChoice(productId, selectedBrand)
+      confirmBrandChoice(productId, selectedBrand)
 
       toast.success(`Brand updated to ${selectedBrand}`, { duration: 2000 })
     },
-    [sendJson, store],
+    [sendJson, confirmBrandChoice],
   )
 
   // Cleanup on unmount
@@ -248,7 +274,7 @@ export function useVoiceWebSocket() {
     startRecording,
     stopRecording,
     confirmBrand,
-    isConnected: store.isConnected,
-    isRecording: store.isRecording,
+    isConnected,
+    isRecording,
   }
 }
