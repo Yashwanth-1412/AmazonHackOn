@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.routers import products, home, orders, voice
+from app.routers import products, home, orders, voice, ramble, product_image
 
 app = FastAPI(
     title="Amazon Now API",
@@ -23,6 +23,8 @@ app.include_router(products.router)
 app.include_router(home.router)
 app.include_router(orders.router)
 app.include_router(voice.router)
+app.include_router(ramble.router)
+app.include_router(product_image.router)
 
 
 @app.get("/health")
@@ -31,4 +33,6 @@ async def health():
         "status": "ok",
         "provider": settings.LLM_PROVIDER,
         "model": settings.LLM_MODEL,
+        "embedding_provider": settings.EMBEDDING_PROVIDER,
+        "embedding_model": settings.EMBEDDING_MODEL,
     }

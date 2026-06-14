@@ -2,7 +2,7 @@ import type { Metadata } from "next"
 import { Toaster } from "sonner"
 import BottomNav from "@/components/shared/BottomNav"
 import CartSheet from "@/components/cart/CartSheet"
-import { VoiceButton, VoicePopup } from "@/components/voice"
+import { RambleButton, RambleCanvas } from "@/components/voice"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -25,12 +25,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </main>
             <BottomNav />
 
-            {/* Voice Shopping Feature */}
+            {/* Ramble Voice Shopping */}
             <div className="fixed bottom-[72px] right-4 z-[60] max-w-[430px]">
-              <VoicePopup />
+              <RambleCanvas />
             </div>
             <div className="fixed bottom-20 right-6 z-[60]">
-              <VoiceButton />
+              <RambleButton />
             </div>
 
             <CartSheet />

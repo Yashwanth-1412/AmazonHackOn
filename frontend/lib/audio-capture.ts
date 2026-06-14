@@ -8,6 +8,7 @@
 export interface AudioCaptureOptions {
   sampleRate?: number
   onChunk: (base64Audio: string) => void
+  onEnd?: () => void
   onError?: (error: string) => void
 }
 
@@ -62,9 +63,20 @@ export class AudioCapture {
   }
 
   stop(): void {
+    this._stopInternal(true)
+  }
+
+  /** Stop mic without firing onEnd — use when pausing (not ending) */
+  stopSilent(): void {
+    this._stopInternal(false)
+  }
+
+  private _stopInternal(fireOnEnd: boolean): void {
+    if (!this.isCapturing) return
     this.isCapturing = false
 
     if (this.processor) {
+      this.processor.onaudioprocess = null
       this.processor.disconnect()
       this.processor = null
     }
@@ -84,6 +96,10 @@ export class AudioCapture {
     if (this.stream) {
       this.stream.getTracks().forEach((track) => track.stop())
       this.stream = null
+    }
+
+    if (fireOnEnd) {
+      this.options.onEnd?.()
     }
   }
 
