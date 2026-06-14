@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 
 from app.core.config import settings
-from app.core.gemini.live_client import GeminiLiveClient
+from app.core.gemini.live_client import GeminiLiveClient, GeminiQuotaError
 from app.core.embeddings.product_index import product_index
 from app.db.helpers import table, _serialize
 
@@ -208,7 +208,18 @@ async def ramble_stream(
         # Connect to Gemini Live API
         await websocket.send_json({"type": "status", "status": "connecting"})
 
-        connected = await gemini.connect()
+        try:
+            connected = await gemini.connect()
+        except GeminiQuotaError:
+            print("[Ramble] Gemini quota exhausted — telling user")
+            await websocket.send_json({
+                "type": "toast",
+                "kind": "error",
+                "message": "Gemini is rate limited. Wait 1-2 min and try again.",
+            })
+            await websocket.close()
+            return
+
         if not connected:
             await websocket.send_json({
                 "type": "error",
@@ -291,6 +302,16 @@ async def ramble_stream(
 
         gemini_task.cancel()
 
+    except GeminiQuotaError:
+        print("[Ramble] Gemini quota exhausted mid-session")
+        try:
+            await websocket.send_json({
+                "type": "toast",
+                "kind": "error",
+                "message": "Gemini is rate limited. Wait 1-2 min and try again.",
+            })
+        except Exception:
+            pass
     except WebSocketDisconnect:
         pass
     except Exception as e:
@@ -321,7 +342,11 @@ async def _gemini_receive_loop(
     Send canvas updates back to browser.
     """
     while True:
-        data = await gemini.receive()
+        try:
+            data = await gemini.receive()
+        except GeminiQuotaError:
+            # Propagate up to main handler
+            raise
         if data is None:
             continue
 

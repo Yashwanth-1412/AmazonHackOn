@@ -29,9 +29,11 @@ from openai import AsyncOpenAI
 CATALOG_PATH = Path(__file__).parent / "catalog.json"
 ENRICH_DATA_PATH = Path(__file__).parent / "enrich_data.json"
 
-API_KEY = "h9XwFvp3VO2Mv6JiiONHarfogHajtluQ"
-BASE_URL = "https://api.mistral.ai/v1"
-MODEL = "open-mistral-nemo"
+from app.core.config import settings
+
+API_KEY = settings.ENRICH_API_KEY or ""
+BASE_URL = settings.ENRICH_BASE_URL
+MODEL = settings.ENRICH_MODEL
 
 BATCH_SIZE = 10
 STOP_FLAG = False

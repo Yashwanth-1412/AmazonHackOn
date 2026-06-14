@@ -18,6 +18,11 @@ GEMINI_WS_URL = (
     ".GenerativeService.BidiGenerateContent"
 )
 
+
+class GeminiQuotaError(Exception):
+    """Raised when Gemini returns 1011 quota exhausted."""
+    pass
+
 # Tool definitions for Gemini
 RAMBLE_TOOLS = [
     {
@@ -200,12 +205,18 @@ class GeminiLiveClient:
         url = f"{GEMINI_WS_URL}?key={self.api_key}"
         print(f"[Gemini] Connecting to {GEMINI_WS_URL}")
         print(f"[Gemini] Model: models/{self.model}")
-        self._ws = await websockets.connect(
-            url,
-            max_size=2**22,
-            ping_interval=20,
-            ping_timeout=10,
-        )
+        try:
+            self._ws = await websockets.connect(
+                url,
+                max_size=2**22,
+                ping_interval=20,
+                ping_timeout=10,
+            )
+        except Exception as e:
+            msg = str(e)
+            if "1011" in msg or "exhausted" in msg.lower() or "quota" in msg.lower():
+                raise GeminiQuotaError("Gemini quota exhausted. Wait a few minutes and try again.")
+            raise
         print(f"[Gemini] WebSocket connected")
 
         setup_msg = {
@@ -290,7 +301,10 @@ class GeminiLiveClient:
             print("[Gemini] ← timeout (30s)")
             return None
         except websockets.exceptions.ConnectionClosed as e:
+            msg = str(e)
             print(f"[Gemini] ← connection closed: {e}")
+            if "1011" in msg or "exhausted" in msg.lower() or "quota" in msg.lower():
+                raise GeminiQuotaError("Gemini quota exhausted. Wait a few minutes and try again.")
             return None
 
     def parse_function_call(self, data: dict) -> tuple[str, dict] | None:
