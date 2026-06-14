@@ -4,7 +4,7 @@ import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { X, ChevronRight, Clock } from "lucide-react"
 import { useNotificationStore } from "@/store/notifications"
-import { useCheckoutStore } from "@/store/checkout"
+import { useCartStore } from "@/store/cart"
 import { ORDERS } from "@/data/orders"
 import { predictRunningLow } from "@/lib/predictions"
 import type { PredictedItem } from "@/lib/predictions"
@@ -12,13 +12,12 @@ import type { PredictedItem } from "@/lib/predictions"
 /**
  * Analyzes order history on mount, populates the notification store,
  * and renders a dismissible "Running Low" banner on the home page.
- * Tapping the banner pre-fills the checkout and routes to /checkout.
+ * Tapping the banner adds items to cart and routes to /cart with animation.
  */
 export default function RunningLowNotification() {
   const router = useRouter()
   const { items, isVisible, dismissed, setItems, dismiss } = useNotificationStore()
-  const { setItems: setCheckoutItems, setSource, setSuggestedProducts } =
-    useCheckoutStore()
+  const { addItem } = useCartStore()
 
   // Run prediction once on mount
   useEffect(() => {
@@ -37,25 +36,13 @@ export default function RunningLowNotification() {
 
   if (!isVisible || items.length === 0) return null
 
-  // Tap → pre-fill checkout and navigate
+  // Tap → add items to cart and navigate with animation
   const handleTap = () => {
-    const checkoutItems = items.map((n) => ({
-      product: n.product,
-      quantity: n.typicalQuantity,
-    }))
-    setCheckoutItems(checkoutItems)
-    setSource("notification")
-
-    // Suggest frequently bought items (from most recent order, excluding notif items)
-    const notifIds = new Set(items.map((n) => n.product.id))
-    const mostRecentItems =
-      ORDERS[0]?.items
-        .map((i) => i.product)
-        .filter((p) => !notifIds.has(p.id)) ?? []
-    setSuggestedProducts(mostRecentItems)
-
+    for (const n of items) {
+      addItem(n.product)
+    }
     dismiss()
-    router.push("/checkout?from=notification")
+    router.push("/cart")
   }
 
   const primaryItem = items[0]
