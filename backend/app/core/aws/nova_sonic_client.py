@@ -33,7 +33,6 @@ from aws_sdk_bedrock_runtime.models import (
 from aws_sdk_bedrock_runtime.config import Config
 from smithy_aws_core.identity.environment import EnvironmentCredentialsResolver
 from smithy_aws_core.identity.static import StaticCredentialsResolver
-from smithy_core.identity.api import Identity
 
 from app.core.config import settings
 
