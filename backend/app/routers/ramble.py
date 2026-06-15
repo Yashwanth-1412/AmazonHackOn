@@ -1,25 +1,42 @@
 """
-Ramble router — WebSocket endpoint for voice-to-canvas shopping.
+Ramble router — WebSocket endpoint for voice + vision to canvas shopping.
 
-Flow:
-  Browser → audio chunks → Backend → Gemini Live API
-  Gemini → function calls → Backend executes → Canvas state updated
-  Backend → canvas update → Browser UI updates
+Voice provider controlled by VOICE_PROVIDER env var:
+  VOICE_PROVIDER=gemini      → Google Gemini Live API (default, supports audio + image)
+  VOICE_PROVIDER=nova_sonic  → Amazon Nova Sonic (audio only, requires AWS credentials)
 """
 
 import json
 import asyncio
 import base64
-from typing import Optional
+from typing import Optional, Union
 from dataclasses import dataclass, field
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 
 from app.core.config import settings
 from app.core.gemini.live_client import GeminiLiveClient, GeminiQuotaError, GeminiSessionExpired
+from app.core.aws.nova_sonic_client import NovaSonicClient, NovaSonicQuotaError
 from app.core.embeddings.product_index import product_index
 from app.db.helpers import table, _serialize
 
 router = APIRouter(prefix="/api/ramble", tags=["ramble"])
+
+# Unified type alias
+VoiceClient = Union[GeminiLiveClient, NovaSonicClient]
+VoiceQuotaError = (GeminiQuotaError, NovaSonicQuotaError)
+
+
+def _make_voice_client() -> VoiceClient:
+    """Factory: returns the correct voice client based on VOICE_PROVIDER setting."""
+    provider = settings.VOICE_PROVIDER.lower()
+    if provider == "nova_sonic":
+        if not settings.AWS_ACCESS_KEY_ID or not settings.AWS_SECRET_ACCESS_KEY:
+            print("[Ramble] ⚠ VOICE_PROVIDER=nova_sonic but AWS credentials missing — falling back to Gemini")
+            return GeminiLiveClient()
+        print(f"[Ramble] Using Nova Sonic (region={settings.AWS_REGION})")
+        return NovaSonicClient()
+    print(f"[Ramble] Using Gemini Live (model={settings.GEMINI_MODEL})")
+    return GeminiLiveClient()
 
 
 # ── Canvas State ──────────────────────────────────────────────────────────────
@@ -201,7 +218,7 @@ async def ramble_stream(
     await websocket.accept()
 
     canvas = CanvasState()
-    gemini = GeminiLiveClient()
+    gemini = _make_voice_client()
     is_paused = False
 
     try:
@@ -210,7 +227,7 @@ async def ramble_stream(
 
         try:
             connected = await gemini.connect()
-        except GeminiQuotaError:
+        except VoiceQuotaError:
             print("[Ramble] Gemini quota exhausted — telling user")
             await websocket.send_json({
                 "type": "toast",
@@ -258,6 +275,17 @@ async def ramble_stream(
                     if not is_paused:
                         await gemini.send_audio_end()
 
+                elif msg_type == "image":
+                    # Vision scan — send photo to Gemini, same canvas pipeline
+                    image_b64 = data.get("image", "")
+                    mime    = data.get("mime", "image/jpeg")
+                    if image_b64:
+                        print(f"[Ramble] Image received ({len(image_b64)} chars b64, {mime})")
+                        await websocket.send_json({"type": "status", "status": "scanning"})
+                        await gemini.send_image(image_b64, mime)
+                    else:
+                        await websocket.send_json({"type": "error", "message": "Empty image data"})
+
                 elif msg_type == "pause":
                     is_paused = True
                     await websocket.send_json({"type": "status", "status": "paused"})
@@ -302,7 +330,7 @@ async def ramble_stream(
 
         gemini_task.cancel()
 
-    except GeminiQuotaError:
+    except VoiceQuotaError:
         print("[Ramble] Gemini quota exhausted mid-session")
         try:
             await websocket.send_json({
@@ -334,21 +362,19 @@ async def ramble_stream(
 # ── Gemini Receive Loop ───────────────────────────────────────────────────────
 
 async def _gemini_receive_loop(
-    gemini: GeminiLiveClient,
+    gemini: VoiceClient,
     canvas: CanvasState,
     websocket: WebSocket,
     user_id: str,
 ):
     """
-    Continuously receive messages from Gemini.
-    Handle function calls (search, add, update, remove, get).
-    Send canvas updates back to browser.
-    On 8-min session expiry (GoAway), reconnect automatically.
+    Continuously receive messages from voice client (Gemini or Nova Sonic).
+    Handles function calls, session expiry, quota errors.
     """
     while True:
         try:
             data = await gemini.receive()
-        except GeminiQuotaError:
+        except VoiceQuotaError:
             raise  # Propagate to main handler
         except GeminiSessionExpired:
             print("[Ramble] Gemini session expired (8 min) — reconnecting...")
@@ -358,7 +384,7 @@ async def _gemini_receive_loop(
                 pass
             # Reconnect with a fresh GeminiLiveClient, preserving canvas
             await gemini.close()
-            new_gemini = GeminiLiveClient()
+            new_gemini = _make_voice_client()
             try:
                 connected = await new_gemini.connect()
                 if connected:
@@ -370,12 +396,20 @@ async def _gemini_receive_loop(
                     except Exception:
                         pass
                     continue
-            except GeminiQuotaError:
+            except VoiceQuotaError:
                 raise
             except Exception as e:
                 print(f"[Ramble] Reconnect failed: {e}")
             return
         if data is None:
+            continue
+
+        # Nova Sonic: image not supported notification
+        if data.get("_nova_image_unsupported"):
+            await websocket.send_json({
+                "type": "toast", "kind": "warning",
+                "message": data.get("message", "Vision requires Gemini — set VOICE_PROVIDER=gemini")
+            })
             continue
 
         # Check for function calls — handle ALL calls in one toolCall

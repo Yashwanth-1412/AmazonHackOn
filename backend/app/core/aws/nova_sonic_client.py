@@ -321,6 +321,18 @@ class NovaSonicClient:
             self._content_end_event(self._prompt_name, self._audio_content_name)
         )
 
+    async def send_image(self, image_b64: str, mime_type: str = "image/jpeg"):
+        """
+        Nova Sonic is audio-only — it does not support image input.
+        Notify the user gracefully instead of crashing.
+        """
+        print("[NovaSonic] ⚠ send_image called but Nova Sonic is audio-only — skipping")
+        # Put a notification in the output queue so ramble.py can tell the user
+        await self._output_queue.put({
+            "_nova_image_unsupported": True,
+            "message": "Vision scanning requires Gemini. Switch VOICE_PROVIDER=gemini in .env."
+        })
+
     async def _audio_send_loop(self):
         """Drain the audio queue and send chunks to Nova Sonic."""
         while self._is_active:

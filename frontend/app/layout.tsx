@@ -4,7 +4,7 @@ import { Toaster } from "sonner"
 import BottomNav from "@/components/shared/BottomNav"
 import AuthShell from "@/components/shared/AuthShell"
 import CartSheet from "@/components/cart/CartSheet"
-import { RambleButton, RambleCanvas } from "@/components/voice"
+import { RambleButton, RambleCanvas, VisionButton } from "@/components/voice"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -29,14 +29,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <AuthShell>
               <BottomNav />
 
-              {/* Ramble Voice Shopping — positioned above Profile tab */}
+              {/* Ramble Voice + Vision — positioned above Profile tab */}
               <div className="fixed bottom-[128px] z-[60] left-1/2 -translate-x-1/2 w-full max-w-[430px] pointer-events-none">
                 <div className="flex justify-end pr-[22px] pointer-events-auto">
                   <RambleCanvas />
                 </div>
               </div>
               <div className="fixed bottom-[58px] z-[60] left-1/2 -translate-x-1/2 w-full max-w-[430px] pointer-events-none">
-                <div className="flex justify-end pr-[22px] pointer-events-auto">
+                <div className="flex justify-end items-center gap-3 pr-[22px] pointer-events-auto">
+                  <VisionButton />
                   <RambleButton />
                 </div>
               </div>

@@ -65,12 +65,12 @@ export function useRambleWebSocket() {
     return () => { setSendJson(null) }
   }, [sendJson, setSendJson])
 
-  const startListening = useCallback(async () => {
-    // Prevent double-start
+  // ── shared WS setup ──────────────────────────────────────────────────────
+  const _setupWs = useCallback((startMic: boolean) => {
     if (_ws && _ws.readyState === WebSocket.OPEN) return
 
     setConnecting(true)
-    setListening(true)
+    if (startMic) setListening(true)
 
     const ws = new WebSocket(`${WS_BASE}/api/ramble/stream?user_id=u001`)
     _ws = ws
@@ -78,6 +78,8 @@ export function useRambleWebSocket() {
     ws.onopen = () => {
       setConnected(true)
       setConnecting(false)
+
+      if (!startMic) return  // vision-only — no mic
 
       const audio = new AudioCapture({
         onChunk: (b64) => {
@@ -110,7 +112,8 @@ export function useRambleWebSocket() {
         const data = JSON.parse(event.data)
         switch (data.type) {
           case "status":
-            if (data.status === "ready") toast.success("Ramble active — start speaking!", { duration: 2000 })
+            if (data.status === "ready" && startMic)
+              toast.success("Ramble active — start speaking!", { duration: 2000 })
             break
           case "toast":
             if (data.kind === "success") toast.success(data.message, { duration: 2000 })
@@ -161,8 +164,25 @@ export function useRambleWebSocket() {
     }
   }, [setConnected, setConnecting, setListening, setPaused, setCanvas, clearCanvas, addItem, openCart])
 
+  /** Start voice session — opens WS + starts mic */
+  const startListening = useCallback(async () => {
+    _setupWs(true)
+  }, [_setupWs])
+
+  /** Connect WS only — no mic (used by vision scan) */
+  const connectOnly = useCallback((): Promise<void> => {
+    return new Promise((resolve) => {
+      if (_ws && _ws.readyState === WebSocket.OPEN) { resolve(); return }
+      _setupWs(false)
+      const check = setInterval(() => {
+        if (_ws?.readyState === WebSocket.OPEN) { clearInterval(check); resolve() }
+      }, 100)
+      setTimeout(() => { clearInterval(check); resolve() }, 5000)
+    })
+  }, [_setupWs])
+
   const stopListening = useCallback(() => {
-    stopAudio()                          // kill mic immediately
+    stopAudio()
     if (_ws?.readyState === WebSocket.OPEN) {
       _ws.send(JSON.stringify({ type: "stop" }))
     }
@@ -229,6 +249,7 @@ export function useRambleWebSocket() {
 
   return {
     startListening,
+    connectOnly,
     stopListening,
     pauseListening,
     resumeListening,

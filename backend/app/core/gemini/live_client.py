@@ -269,9 +269,41 @@ class GeminiLiveClient:
         if not self._ws:
             return
         print("[Gemini] → send_audio_end (turnComplete)")
-        # Just signal turn complete — no empty text parts (causes 1008)
         msg = {
             "clientContent": {
+                "turnComplete": True,
+            }
+        }
+        await self._ws.send(json.dumps(msg))
+
+    async def send_image(self, image_b64: str, mime_type: str = "image/jpeg"):
+        """
+        Send a single image to Gemini via clientContent.
+        Gemini will identify products and call search_products / add_to_canvas.
+        """
+        if not self._ws:
+            return
+        print(f"[Gemini] → send_image ({mime_type}, {len(image_b64)} chars b64)")
+        msg = {
+            "clientContent": {
+                "turns": [{
+                    "role": "user",
+                    "parts": [
+                        {
+                            "inline_data": {
+                                "mime_type": mime_type,
+                                "data": image_b64,
+                            }
+                        },
+                        {
+                            "text": (
+                                "Identify every grocery/FMCG product visible in this image. "
+                                "For each product found, call search_products then add_to_canvas. "
+                                "If no grocery products are visible, call notify_user with a warning."
+                            )
+                        },
+                    ]
+                }],
                 "turnComplete": True,
             }
         }
