@@ -32,3 +32,10 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+
+# Generated data — regenerate locally
+backend/chroma_db/
+backend/app/db/enrich_data.json
+backend/app/db/enrich_progress.json
+.playwright-mcp/
+*.png
