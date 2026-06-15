@@ -1,8 +1,3 @@
-export { default as VoiceButton } from "./VoiceButton"
-export { default as VoicePopup } from "./VoicePopup"
-export { default as VoiceWrapper } from "./VoiceWrapper"
-export { default as RecognizedItemCard } from "./RecognizedItemCard"
-export { default as BrandPicker } from "./BrandPicker"
 export { default as RambleButton } from "./RambleButton"
 export { default as RambleCanvas } from "./RambleCanvas"
 export { default as CanvasItemCard } from "./CanvasItemCard"

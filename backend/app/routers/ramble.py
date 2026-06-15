@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
 
 from app.core.config import settings
-from app.core.gemini.live_client import GeminiLiveClient, GeminiQuotaError
+from app.core.gemini.live_client import GeminiLiveClient, GeminiQuotaError, GeminiSessionExpired
 from app.core.embeddings.product_index import product_index
 from app.db.helpers import table, _serialize
 
@@ -312,6 +312,9 @@ async def ramble_stream(
             })
         except Exception:
             pass
+    except GeminiSessionExpired:
+        # Should be handled in _gemini_receive_loop, but catch here as fallback
+        print("[Ramble] Gemini session expired (fallback handler)")
     except WebSocketDisconnect:
         pass
     except Exception as e:
@@ -340,13 +343,38 @@ async def _gemini_receive_loop(
     Continuously receive messages from Gemini.
     Handle function calls (search, add, update, remove, get).
     Send canvas updates back to browser.
+    On 8-min session expiry (GoAway), reconnect automatically.
     """
     while True:
         try:
             data = await gemini.receive()
         except GeminiQuotaError:
-            # Propagate up to main handler
-            raise
+            raise  # Propagate to main handler
+        except GeminiSessionExpired:
+            print("[Ramble] Gemini session expired (8 min) — reconnecting...")
+            try:
+                await websocket.send_json({"type": "toast", "kind": "info", "message": "Refreshing session..."})
+            except Exception:
+                pass
+            # Reconnect with a fresh GeminiLiveClient, preserving canvas
+            await gemini.close()
+            new_gemini = GeminiLiveClient()
+            try:
+                connected = await new_gemini.connect()
+                if connected:
+                    # Swap out the old client in place
+                    gemini.__dict__.update(new_gemini.__dict__)
+                    print("[Ramble] Gemini reconnected — session resumed")
+                    try:
+                        await websocket.send_json({"type": "toast", "kind": "success", "message": "Session refreshed — keep speaking!"})
+                    except Exception:
+                        pass
+                    continue
+            except GeminiQuotaError:
+                raise
+            except Exception as e:
+                print(f"[Ramble] Reconnect failed: {e}")
+            return
         if data is None:
             continue
 

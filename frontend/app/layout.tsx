@@ -3,7 +3,6 @@ import { Toaster } from "sonner"
 import BottomNav from "@/components/shared/BottomNav"
 import CartSheet from "@/components/cart/CartSheet"
 import { RambleButton, RambleCanvas } from "@/components/voice"
-import VoiceWrapper from "@/components/voice/VoiceWrapper"
 import "./globals.css"
 
 export const metadata: Metadata = {
@@ -26,16 +25,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </main>
             <BottomNav />
 
-            {/* Ramble Voice Shopping */}
-            <div className="fixed bottom-[72px] right-4 z-[60] max-w-[430px]">
-              <RambleCanvas />
+            {/* Ramble Voice Shopping — positioned above Profile tab (same as old voice button) */}
+            <div className="fixed bottom-[128px] z-[60] left-1/2 -translate-x-1/2 w-full max-w-[430px] pointer-events-none">
+              <div className="flex justify-end pr-[22px] pointer-events-auto">
+                <RambleCanvas />
+              </div>
             </div>
-            <div className="fixed bottom-20 right-6 z-[60]">
-              <RambleButton />
+            <div className="fixed bottom-[58px] z-[60] left-1/2 -translate-x-1/2 w-full max-w-[430px] pointer-events-none">
+              <div className="flex justify-end pr-[22px] pointer-events-auto">
+                <RambleButton />
+              </div>
             </div>
-
-            {/* Voice Shopping Feature — only on home page */}
-            <VoiceWrapper />
 
             <CartSheet />
           </div>

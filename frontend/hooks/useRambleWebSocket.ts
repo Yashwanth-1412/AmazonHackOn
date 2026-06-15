@@ -1,54 +1,79 @@
 "use client"
 
-import { useCallback, useRef, useEffect } from "react"
+import { useCallback, useEffect } from "react"
 import { useRambleStore } from "@/store/ramble"
 import { useCartStore } from "@/store/cart"
 import { AudioCapture } from "@/lib/audio-capture"
 import { toast } from "sonner"
 import type { Product } from "@/types"
 
-const WS_BASE = "ws://localhost:8000"
+const WS_BASE = process.env.NEXT_PUBLIC_API_URL?.replace("http", "ws") ?? "ws://localhost:8000"
+
+// ── Module-level singletons ────────────────────────────────────────────────
+// All hook instances (RambleButton, RambleCanvas) share the same WS + mic.
+// This is the core fix: useRef creates per-component state, we need global.
+let _ws: WebSocket | null = null
+let _audio: AudioCapture | null = null
+
+function stopAudio() {
+  if (_audio) {
+    _audio.stop()
+    _audio = null
+  }
+}
+
+function stopAudioSilent() {
+  if (_audio) {
+    const a = _audio
+    _audio = null
+    a.stopSilent()
+  }
+}
+
+function closeWs() {
+  if (_ws) {
+    try { _ws.close() } catch { /* ignore */ }
+    _ws = null
+  }
+}
+// ──────────────────────────────────────────────────────────────────────────
 
 export function useRambleWebSocket() {
-  const wsRef = useRef<WebSocket | null>(null)
-  const audioRef = useRef<AudioCapture | null>(null)
-  const userRef = useRef("u001")
-
-  const setSendJson = useRambleStore((s) => s.setSendJson)
+  const setSendJson  = useRambleStore((s) => s.setSendJson)
   const setConnected = useRambleStore((s) => s.setConnected)
   const setConnecting = useRambleStore((s) => s.setConnecting)
   const setListening = useRambleStore((s) => s.setListening)
-  const setPaused = useRambleStore((s) => s.setPaused)
-  const setCanvas = useRambleStore((s) => s.setCanvas)
-  const clearCanvas = useRambleStore((s) => s.clearCanvas)
-  const reset = useRambleStore((s) => s.reset)
+  const setPaused    = useRambleStore((s) => s.setPaused)
+  const setCanvas    = useRambleStore((s) => s.setCanvas)
+  const clearCanvas  = useRambleStore((s) => s.clearCanvas)
 
   const isConnected = useRambleStore((s) => s.isConnected)
   const isListening = useRambleStore((s) => s.isListening)
 
-  const addItem = useCartStore((s) => s.addItem)
+  const addItem  = useCartStore((s) => s.addItem)
   const openCart = useCartStore((s) => s.openCart)
 
+  // sendJson always uses the current module-level _ws
   const sendJson = useCallback((data: object) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(data))
+    if (_ws?.readyState === WebSocket.OPEN) {
+      _ws.send(JSON.stringify(data))
     }
   }, [])
 
   useEffect(() => {
     setSendJson(sendJson)
-    return () => {
-      setSendJson(null)
-    }
+    return () => { setSendJson(null) }
   }, [sendJson, setSendJson])
 
   const startListening = useCallback(async () => {
+    // Prevent double-start
+    if (_ws && _ws.readyState === WebSocket.OPEN) return
+
     setConnecting(true)
     setListening(true)
 
-    const ws = new WebSocket(
-      `${WS_BASE}/api/ramble/stream?user_id=${userRef.current}`
-    )
+    const ws = new WebSocket(`${WS_BASE}/api/ramble/stream?user_id=u001`)
+    _ws = ws
 
     ws.onopen = () => {
       setConnected(true)
@@ -56,10 +81,14 @@ export function useRambleWebSocket() {
 
       const audio = new AudioCapture({
         onChunk: (b64) => {
-          sendJson({ type: "audio", audio: b64 })
+          if (_ws?.readyState === WebSocket.OPEN) {
+            _ws.send(JSON.stringify({ type: "audio", audio: b64 }))
+          }
         },
         onEnd: () => {
-          sendJson({ type: "audio_end" })
+          if (_ws?.readyState === WebSocket.OPEN) {
+            _ws.send(JSON.stringify({ type: "audio_end" }))
+          }
         },
         onError: (err) => {
           toast.error("Microphone error: " + err)
@@ -67,11 +96,8 @@ export function useRambleWebSocket() {
         },
       })
 
-      audio
-        .start()
-        .then(() => {
-          audioRef.current = audio
-        })
+      audio.start()
+        .then(() => { _audio = audio })
         .catch(() => {
           setListening(false)
           setConnected(false)
@@ -82,181 +108,122 @@ export function useRambleWebSocket() {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
-
         switch (data.type) {
           case "status":
-            if (data.status === "ready") {
-              toast.success("Ramble active — start speaking!", {
-                duration: 2000,
-              })
-            }
+            if (data.status === "ready") toast.success("Ramble active — start speaking!", { duration: 2000 })
             break
-
           case "toast":
             if (data.kind === "success") toast.success(data.message, { duration: 2000 })
             else if (data.kind === "warning") toast.warning(data.message, { duration: 3000 })
             else if (data.kind === "error") toast.error(data.message, { duration: 3000 })
             else toast(data.message, { duration: 2000 })
             break
-
           case "canvas_update":
             setCanvas(data.canvas || [], data.total || 0)
             break
-
-          case "product_found":
-            toast.info(`Found: ${data.product}`, { duration: 1500 })
-            break
-
           case "cart_action":
             if (data.action === "add_to_cart") {
               for (const item of data.items) {
                 const product: Product = {
-                  id: item.product_id,
-                  name: item.name,
-                  brand: item.brand,
-                  variant: item.variant || "",
-                  price: item.price,
-                  mrp: item.price,
-                  image: item.image || "",
-                  category: (item.category || "grocery") as Product["category"],
-                  inStock: true,
-                  deliveryMins: 15,
-                  tags: [],
+                  id: item.product_id, name: item.name, brand: item.brand,
+                  variant: item.variant || "", price: item.price, mrp: item.price,
+                  image: "", category: (item.category || "grocery") as Product["category"],
+                  inStock: true, deliveryMins: 15, tags: [],
                 }
-                for (let i = 0; i < item.quantity; i++) {
-                  addItem(product)
-                }
+                for (let i = 0; i < item.quantity; i++) addItem(product)
               }
               clearCanvas()
               openCart()
-              toast.success(`Added ${data.items.length} items to cart!`)
             }
             break
-
           case "error":
             toast.error(data.message || "Ramble error")
             break
         }
-      } catch {
-        // ignore parse errors
-      }
+      } catch { /* ignore parse errors */ }
     }
 
     ws.onclose = () => {
-      // Always release mic on disconnect
-      if (audioRef.current) {
-        audioRef.current.stop()
-        audioRef.current = null
-      }
+      // Release mic whenever WS closes for any reason
+      stopAudio()
+      _ws = null
       setConnected(false)
       setListening(false)
       setPaused(false)
-      wsRef.current = null
     }
 
     ws.onerror = () => {
-      if (audioRef.current) {
-        audioRef.current.stop()
-        audioRef.current = null
-      }
+      stopAudio()
+      _ws = null
       setConnected(false)
       setListening(false)
       toast.error("Ramble connection failed")
     }
-
-    wsRef.current = ws
-  }, [
-    setConnected,
-    setConnecting,
-    setListening,
-    setPaused,
-    setCanvas,
-    clearCanvas,
-    sendJson,
-    addItem,
-    openCart,
-  ])
+  }, [setConnected, setConnecting, setListening, setPaused, setCanvas, clearCanvas, addItem, openCart])
 
   const stopListening = useCallback(() => {
-    if (audioRef.current) {
-      audioRef.current.stop()
-      audioRef.current = null
+    stopAudio()                          // kill mic immediately
+    if (_ws?.readyState === WebSocket.OPEN) {
+      _ws.send(JSON.stringify({ type: "stop" }))
     }
-    if (wsRef.current) {
-      sendJson({ type: "stop" })
-      wsRef.current.close()
-      wsRef.current = null
-    }
+    closeWs()
     setListening(false)
-  }, [sendJson, setListening])
+    setPaused(false)
+  }, [setListening, setPaused])
 
   const pauseListening = useCallback(() => {
-    sendJson({ type: "pause" })
-    setPaused(true)
-    if (audioRef.current) {
-      // Detach onEnd before stop so we don't send audio_end to backend
-      // (pause doesn't mean turn complete — Gemini keeps the session)
-      const audio = audioRef.current
-      audioRef.current = null
-      audio.stopSilent()  // stop mic without firing onEnd
+    if (_ws?.readyState === WebSocket.OPEN) {
+      _ws.send(JSON.stringify({ type: "pause" }))
     }
-  }, [sendJson, setPaused])
+    setPaused(true)
+    stopAudioSilent()                    // kill mic, no audio_end (keep Gemini session)
+  }, [setPaused])
 
   const resumeListening = useCallback(async () => {
-    sendJson({ type: "resume" })
+    if (_ws?.readyState === WebSocket.OPEN) {
+      _ws.send(JSON.stringify({ type: "resume" }))
+    }
     setPaused(false)
 
     const audio = new AudioCapture({
       onChunk: (b64) => {
-        sendJson({ type: "audio", audio: b64 })
+        if (_ws?.readyState === WebSocket.OPEN) {
+          _ws.send(JSON.stringify({ type: "audio", audio: b64 }))
+        }
       },
       onEnd: () => {
-        sendJson({ type: "audio_end" })
+        if (_ws?.readyState === WebSocket.OPEN) {
+          _ws.send(JSON.stringify({ type: "audio_end" }))
+        }
       },
-      onError: (err) => {
-        toast.error("Microphone error: " + err)
-      },
+      onError: (err) => toast.error("Microphone error: " + err),
     })
 
     try {
       await audio.start()
-      audioRef.current = audio
+      _audio = audio
     } catch {
       toast.error("Could not access microphone")
     }
-  }, [sendJson, setPaused])
+  }, [setPaused])
 
   const sendRaw = useCallback((data: object) => {
-    const ws = wsRef.current
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(data))
+    if (_ws?.readyState === WebSocket.OPEN) {
+      _ws.send(JSON.stringify(data))
     }
   }, [])
 
-  const sendAction = useCallback(
-    (action: "add_to_cart" | "discard") => {
-      const ws = wsRef.current
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: "action", action }))
-      } else {
-        // fallback to sendJson
-        sendJson({ type: "action", action })
-      }
-    },
-    [sendJson]
-  )
+  const sendAction = useCallback((action: "add_to_cart" | "discard") => {
+    if (_ws?.readyState === WebSocket.OPEN) {
+      _ws.send(JSON.stringify({ type: "action", action }))
+    }
+  }, [])
 
+  // Cleanup on full unmount (page unload)
   useEffect(() => {
     return () => {
-      // Clean up mic + WebSocket on component unmount
-      if (audioRef.current) {
-        audioRef.current.stop()
-        audioRef.current = null
-      }
-      if (wsRef.current) {
-        wsRef.current.close()
-        wsRef.current = null
-      }
+      stopAudio()
+      closeWs()
     }
   }, [])
 

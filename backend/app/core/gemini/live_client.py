@@ -23,6 +23,10 @@ class GeminiQuotaError(Exception):
     """Raised when Gemini returns 1011 quota exhausted."""
     pass
 
+class GeminiSessionExpired(Exception):
+    """Raised when Gemini 8-min session limit is hit (GoAway signal)."""
+    pass
+
 # Tool definitions for Gemini
 RAMBLE_TOOLS = [
     {
@@ -303,6 +307,8 @@ class GeminiLiveClient:
         except websockets.exceptions.ConnectionClosed as e:
             msg = str(e)
             print(f"[Gemini] ← connection closed: {e}")
+            if "GoAway" in msg or "session durat" in msg or "session_duration" in msg.lower():
+                raise GeminiSessionExpired("Gemini 8-min session limit reached — reconnecting...")
             if "1011" in msg or "exhausted" in msg.lower() or "quota" in msg.lower():
                 raise GeminiQuotaError("Gemini quota exhausted. Wait a few minutes and try again.")
             return None
