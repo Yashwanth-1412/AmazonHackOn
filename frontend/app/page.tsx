@@ -1,4 +1,5 @@
 import Header from "@/components/shared/Header"
+import SearchBar from "@/components/shared/SearchBar"
 import CategoryStrip from "@/components/home/CategoryStrip"
 import RunningLowSection from "@/components/home/RunningLowSection"
 import RunningLowNotification from "@/components/home/RunningLowNotification"
@@ -29,12 +30,7 @@ export default async function HomePage() {
       <RunningLowNotification />
 
       {/* Search bar */}
-      <div className="bg-white px-3 py-2 border-b border-[#e3e6e6]">
-        <div className="flex items-center gap-2.5 bg-[#f0f2f2] rounded-full px-4 py-2.5 border border-[#e3e6e6]">
-          <span className="text-[#888c8c] text-base">🔍</span>
-          <span className="text-[#888c8c] text-sm">Search "milk", "pooja thali"…</span>
-        </div>
-      </div>
+      <SearchBar />
 
       <div className="space-y-2">
         {/* Category icons strip */}
