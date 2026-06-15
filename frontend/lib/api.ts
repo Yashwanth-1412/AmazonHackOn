@@ -1,9 +1,11 @@
 /**
  * API client — typed fetchers for the FastAPI backend.
  * All functions are safe to call from Server Components.
+ * Set NEXT_PUBLIC_API_URL in .env for cloud deployments.
  */
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"
+const DEFAULT_USER = process.env.NEXT_PUBLIC_USER_ID ?? "u001"
 
 // ── API shapes (what the backend returns) ────────────────────────────────────
 
@@ -89,7 +91,7 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json() as Promise<T>
 }
 
-export async function getHomeData(userId = "u001"): Promise<APIHomeData> {
+export async function getHomeData(userId = DEFAULT_USER): Promise<APIHomeData> {
   return apiFetch(`/api/home/${userId}`)
 }
 
@@ -106,14 +108,14 @@ export async function getProducts(opts?: {
 }
 
 export async function getOrders(
-  userId = "u001",
+  userId = DEFAULT_USER,
   limit = 20,
 ): Promise<{ orders: APIOrder[]; total: number }> {
   return apiFetch(`/api/orders/${userId}?limit=${limit}`)
 }
 
 export async function getRoutines(
-  userId = "u001",
+  userId = DEFAULT_USER,
 ): Promise<{ routines: APIRoutine[] }> {
   return apiFetch(`/api/orders/${userId}/routines`)
 }

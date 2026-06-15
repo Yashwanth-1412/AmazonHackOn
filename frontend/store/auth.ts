@@ -1,7 +1,11 @@
 import { create } from "zustand"
 
+// Demo user — for hackathon this is fixed; replace with real auth in production
+export const DEMO_USER_ID = process.env.NEXT_PUBLIC_USER_ID || "u001"
+
 interface AuthStore {
   isAuthenticated: boolean
+  userId: string
   login: () => void
   logout: () => void
 }
@@ -13,6 +17,7 @@ function getInitialAuth(): boolean {
 
 export const useAuthStore = create<AuthStore>((set) => ({
   isAuthenticated: false,
+  userId: DEMO_USER_ID,
 
   login: () => {
     document.cookie =

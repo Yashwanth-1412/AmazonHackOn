@@ -7,7 +7,11 @@ import { AudioCapture } from "@/lib/audio-capture"
 import { toast } from "sonner"
 import type { Product } from "@/types"
 
-const WS_BASE = process.env.NEXT_PUBLIC_API_URL?.replace("http", "ws") ?? "ws://localhost:8000"
+import { getWsUrl } from "@/lib/api-url"
+import { DEMO_USER_ID } from "@/store/auth"
+
+// Called lazily at connection time so window.location is always available
+const getWsBase = () => getWsUrl()
 
 // ── Module-level singletons ────────────────────────────────────────────────
 // All hook instances (RambleButton, RambleCanvas) share the same WS + mic.
@@ -72,7 +76,7 @@ export function useRambleWebSocket() {
     setConnecting(true)
     if (startMic) setListening(true)
 
-    const ws = new WebSocket(`${WS_BASE}/api/ramble/stream?user_id=u001`)
+    const ws = new WebSocket(`${getWsBase()}/api/ramble/stream?user_id=${DEMO_USER_ID}`)
     _ws = ws
 
     ws.onopen = () => {

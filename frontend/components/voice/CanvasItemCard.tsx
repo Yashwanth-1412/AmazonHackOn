@@ -4,6 +4,7 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import { Trash2, CheckCircle2 } from "lucide-react"
 import type { CanvasItem } from "@/store/ramble"
+import { getApiUrl } from "@/lib/api-url"
 
 interface Props {
   item: CanvasItem
@@ -11,10 +12,9 @@ interface Props {
   onRemove?: (index: number) => void
 }
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
-
 export default function CanvasItemCard({ item, index, onRemove }: Props) {
   const [imgError, setImgError] = useState(false)
+  const API = getApiUrl()                                   // called inside component — window always available
   const imgUrl = `${API}/api/products/${item.product_id}/image`
   const svgUrl = `${API}/api/products/${item.product_id}/image?svg=1`
 

@@ -10,10 +10,12 @@ app = FastAPI(
     docs_url="/docs" if settings.APP_ENV == "development" else None,
 )
 
+# CORS — allow all in dev, restrict in prod via CORS_ORIGINS env var
+_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
-    allow_credentials=True,
+    allow_origins=_origins if _origins != ["*"] else ["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -30,8 +32,9 @@ app.include_router(product_image.router)
 async def health():
     return {
         "status": "ok",
-        "provider": settings.LLM_PROVIDER,
-        "model": settings.LLM_MODEL,
-        "embedding_provider": settings.EMBEDDING_PROVIDER,
+        "env": settings.APP_ENV,
+        "voice_provider": settings.VOICE_PROVIDER,
         "embedding_model": settings.EMBEDDING_MODEL,
+        "dynamodb_region": settings.DYNAMODB_REGION,
+        "dynamodb_local": bool(settings.DYNAMODB_ENDPOINT),
     }

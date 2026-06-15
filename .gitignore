@@ -42,3 +42,5 @@ backend/app/db/enrich_progress.json
 # Product images - regenerate with scrape_images_cdp.py
 backend/app/db/product_images/
 backend/app/db/image_cache.json
+!frontend/.env.example
+!backend/.env.example
