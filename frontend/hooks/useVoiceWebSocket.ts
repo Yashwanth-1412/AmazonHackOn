@@ -27,7 +27,7 @@ export function useVoiceWebSocket() {
   const setPendingBrandChoice = useVoiceStore((s) => s.setPendingBrandChoice)
   const confirmBrandChoice = useVoiceStore((s) => s.confirmBrandChoice)
   const resetStore = useVoiceStore((s) => s.reset)
-  
+
   const isConnected = useVoiceStore((s) => s.isConnected)
   const isRecording = useVoiceStore((s) => s.isRecording)
 
@@ -45,6 +45,78 @@ export function useVoiceWebSocket() {
     setSendJson(sendJson)
     return () => { setSendJson(null) }
   }, [sendJson, setSendJson])
+
+  // Mock voice session when backend is unavailable
+  const runMockVoiceSession = useCallback(() => {
+    setRecording(true)
+    setConnected(true)
+    setProcessing(false)
+
+    toast("🎙️ Voice demo mode — backend not connected", { duration: 2000 })
+
+    // Simulate interim transcript
+    setTimeout(() => setInterimTranscript("add milk..."), 800)
+    setTimeout(() => setInterimTranscript("add milk and bread"), 1600)
+    setTimeout(() => {
+      setFinalTranscript("Add milk and bread")
+      setInterimTranscript("")
+
+      // Simulate product recognition
+      const mockProduct: Product = {
+        id: "p1",
+        name: "Amul Taaza Toned Milk",
+        brand: "Amul",
+        variant: "1 L",
+        price: 62,
+        mrp: 65,
+        image: "🥛",
+        category: "dairy",
+        inStock: true,
+        deliveryMins: 12,
+        tags: ["daily"],
+      }
+
+      addItem(mockProduct)
+      addRecognizedProduct({
+        product_id: mockProduct.id,
+        name: mockProduct.name,
+        brand: mockProduct.brand,
+        variant: mockProduct.variant,
+        price: mockProduct.price,
+        quantity: 1,
+        image: mockProduct.image,
+        confidence: 0.95,
+        brand_options: [],
+        needs_brand_confirmation: false,
+      })
+
+      toast.success("Added Amul Taaza Toned Milk x1", {
+        description: "Tap cart to review",
+        action: { label: "View Cart", onClick: () => openCart() },
+      })
+    }, 2200)
+
+    // Stop recording after mock completes
+    setTimeout(() => {
+      setRecording(false)
+      setConnected(false)
+      // Clear after a few seconds
+      setTimeout(() => {
+        clearRecognizedProducts()
+        setFinalTranscript("")
+      }, 4000)
+    }, 3000)
+  }, [
+    setRecording,
+    setConnected,
+    setProcessing,
+    setInterimTranscript,
+    setFinalTranscript,
+    addItem,
+    addRecognizedProduct,
+    openCart,
+    clearRecognizedProducts,
+  ])
 
   const startRecording = useCallback(async () => {
     setRecording(true)
@@ -202,7 +274,9 @@ export function useVoiceWebSocket() {
     ws.onerror = () => {
       setConnected(false)
       setProcessing(false)
-      toast.error("Voice connection failed")
+      setRecording(false)
+      // Fall back to mock mode when backend is unavailable
+      runMockVoiceSession()
     }
 
     wsRef.current = ws
@@ -217,7 +291,8 @@ export function useVoiceWebSocket() {
     addRecognizedProduct,
     addItem,
     openCart,
-    setPendingBrandChoice
+    setPendingBrandChoice,
+    runMockVoiceSession
   ])
 
   const stopRecording = useCallback(() => {

@@ -1,6 +1,7 @@
 "use client"
 
 import { ShoppingCart, MapPin, ChevronDown, User, Bell } from "lucide-react"
+import { motion } from "framer-motion"
 import { useCartStore } from "@/store/cart"
 import { useNotificationStore } from "@/store/notifications"
 
@@ -16,7 +17,12 @@ export default function Header({
   const count = totalItems()
 
   return (
-    <header className="sticky top-0 z-40 bg-white shadow-sm">
+    <motion.header
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="sticky top-0 z-40 bg-white shadow-sm"
+    >
       {/* Top bar: account | logo | cart */}
       <div className="flex items-center justify-between px-3 pt-3 pb-2">
         {/* Left: account + pay balance */}
@@ -49,9 +55,14 @@ export default function Header({
           <button className="relative p-1.5 rounded-full bg-[#f0f2f2] active:bg-[#e3e6e6]">
             <Bell size={18} className="text-[#232f3e]" />
             {notifItems.length > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-[#cc0c39] text-white text-[8px] font-black rounded-full flex items-center justify-center">
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-[#cc0c39] text-white text-[8px] font-black rounded-full flex items-center justify-center"
+              >
                 {notifItems.length}
-              </span>
+              </motion.span>
             )}
           </button>
 
@@ -61,9 +72,15 @@ export default function Header({
           >
             <ShoppingCart size={18} className="text-[#232f3e]" />
             {count > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 bg-[#ff9900] text-white text-[8px] font-black rounded-full w-3.5 h-3.5 flex items-center justify-center">
+              <motion.span
+                key={count}
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 500, damping: 15 }}
+                className="absolute -top-0.5 -right-0.5 bg-[#ff9900] text-white text-[8px] font-black rounded-full w-3.5 h-3.5 flex items-center justify-center"
+              >
                 {count > 9 ? "9+" : count}
-              </span>
+              </motion.span>
             )}
           </button>
         </div>
@@ -83,6 +100,6 @@ export default function Header({
           <ChevronDown size={13} className="text-[#565959] shrink-0" />
         </button>
       </div>
-    </header>
+    </motion.header>
   )
 }

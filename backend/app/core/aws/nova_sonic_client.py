@@ -39,10 +39,12 @@ from app.core.config import settings
 
 class NovaSonicQuotaError(Exception):
     """Raised when Nova Sonic returns throttling / quota error."""
+
     pass
 
 
 # ── Tool definitions (same as Gemini RAMBLE_TOOLS) ───────────────────────────
+
 
 def _make_tool_config() -> list[dict]:
     """Build Nova Sonic tool definitions for the ramble canvas."""
@@ -55,24 +57,26 @@ def _make_tool_config() -> list[dict]:
                     "Use when the user mentions a product they want to add."
                 ),
                 "inputSchema": {
-                    "json": json.dumps({
-                        "type": "object",
-                        "properties": {
-                            "query": {
-                                "type": "string",
-                                "description": "Search query. Include brand, product type, details."
+                    "json": json.dumps(
+                        {
+                            "type": "object",
+                            "properties": {
+                                "query": {
+                                    "type": "string",
+                                    "description": "Search query. Include brand, product type, details.",
+                                },
+                                "category": {
+                                    "type": "string",
+                                    "description": (
+                                        "Optional category filter: dairy, bakery, grocery, snacks, "
+                                        "beverages, fruits-vegetables, household, personal-care, pharmacy"
+                                    ),
+                                },
                             },
-                            "category": {
-                                "type": "string",
-                                "description": (
-                                    "Optional category filter: dairy, bakery, grocery, snacks, "
-                                    "beverages, fruits-vegetables, household, personal-care, pharmacy"
-                                )
-                            }
-                        },
-                        "required": ["query"]
-                    })
-                }
+                            "required": ["query"],
+                        }
+                    )
+                },
             }
         },
         {
@@ -80,15 +84,23 @@ def _make_tool_config() -> list[dict]:
                 "name": "add_to_canvas",
                 "description": "Add a product to the shopping canvas. Call search_products first to get the product_id.",
                 "inputSchema": {
-                    "json": json.dumps({
-                        "type": "object",
-                        "properties": {
-                            "product_id": {"type": "string", "description": "Product ID from search_products result"},
-                            "quantity": {"type": "integer", "description": "Quantity to add (default 1)"}
-                        },
-                        "required": ["product_id"]
-                    })
-                }
+                    "json": json.dumps(
+                        {
+                            "type": "object",
+                            "properties": {
+                                "product_id": {
+                                    "type": "string",
+                                    "description": "Product ID from search_products result",
+                                },
+                                "quantity": {
+                                    "type": "integer",
+                                    "description": "Quantity to add (default 1)",
+                                },
+                            },
+                            "required": ["product_id"],
+                        }
+                    )
+                },
             }
         },
         {
@@ -96,16 +108,27 @@ def _make_tool_config() -> list[dict]:
                 "name": "update_canvas_item",
                 "description": "Update quantity or replace an existing canvas item.",
                 "inputSchema": {
-                    "json": json.dumps({
-                        "type": "object",
-                        "properties": {
-                            "canvas_index": {"type": "integer", "description": "0-based index of item"},
-                            "product_id": {"type": "string", "description": "New product ID (if replacing)"},
-                            "quantity": {"type": "integer", "description": "New quantity"}
-                        },
-                        "required": ["canvas_index"]
-                    })
-                }
+                    "json": json.dumps(
+                        {
+                            "type": "object",
+                            "properties": {
+                                "canvas_index": {
+                                    "type": "integer",
+                                    "description": "0-based index of item",
+                                },
+                                "product_id": {
+                                    "type": "string",
+                                    "description": "New product ID (if replacing)",
+                                },
+                                "quantity": {
+                                    "type": "integer",
+                                    "description": "New quantity",
+                                },
+                            },
+                            "required": ["canvas_index"],
+                        }
+                    )
+                },
             }
         },
         {
@@ -113,14 +136,19 @@ def _make_tool_config() -> list[dict]:
                 "name": "remove_from_canvas",
                 "description": "Remove an item from the canvas by index.",
                 "inputSchema": {
-                    "json": json.dumps({
-                        "type": "object",
-                        "properties": {
-                            "canvas_index": {"type": "integer", "description": "0-based index of item to remove"}
-                        },
-                        "required": ["canvas_index"]
-                    })
-                }
+                    "json": json.dumps(
+                        {
+                            "type": "object",
+                            "properties": {
+                                "canvas_index": {
+                                    "type": "integer",
+                                    "description": "0-based index of item to remove",
+                                }
+                            },
+                            "required": ["canvas_index"],
+                        }
+                    )
+                },
             }
         },
         {
@@ -129,7 +157,7 @@ def _make_tool_config() -> list[dict]:
                 "description": "Get the current canvas contents. Call only when user asks what's in their cart.",
                 "inputSchema": {
                     "json": json.dumps({"type": "object", "properties": {}})
-                }
+                },
             }
         },
         {
@@ -140,15 +168,23 @@ def _make_tool_config() -> list[dict]:
                     "search result doesn't match intent, or confirmation."
                 ),
                 "inputSchema": {
-                    "json": json.dumps({
-                        "type": "object",
-                        "properties": {
-                            "message": {"type": "string", "description": "Short message (max 60 chars)"},
-                            "kind": {"type": "string", "description": "One of: success, warning, error, info"}
-                        },
-                        "required": ["message"]
-                    })
-                }
+                    "json": json.dumps(
+                        {
+                            "type": "object",
+                            "properties": {
+                                "message": {
+                                    "type": "string",
+                                    "description": "Short message (max 60 chars)",
+                                },
+                                "kind": {
+                                    "type": "string",
+                                    "description": "One of: success, warning, error, info",
+                                },
+                            },
+                            "required": ["message"],
+                        }
+                    )
+                },
             }
         },
     ]
@@ -239,7 +275,11 @@ class NovaSonicClient:
             print("[NovaSonic] Stream opened")
         except Exception as e:
             msg = str(e)
-            if "throttl" in msg.lower() or "quota" in msg.lower() or "limit" in msg.lower():
+            if (
+                "throttl" in msg.lower()
+                or "quota" in msg.lower()
+                or "limit" in msg.lower()
+            ):
                 raise NovaSonicQuotaError(f"Nova Sonic rate limited: {msg}")
             print(f"[NovaSonic] Connection failed: {e}")
             return False
@@ -277,22 +317,26 @@ class NovaSonicClient:
         if not self._is_active:
             return
         print("[NovaSonic] → audio_end (contentEnd)")
-        await self._send_raw(self._content_end_event(self._prompt_name, self._audio_content_name))
+        await self._send_raw(
+            self._content_end_event(self._prompt_name, self._audio_content_name)
+        )
 
     async def _audio_send_loop(self):
         """Drain the audio queue and send chunks to Nova Sonic."""
         while self._is_active:
             try:
                 b64 = await asyncio.wait_for(self._audio_input_queue.get(), timeout=1.0)
-                event = json.dumps({
-                    "event": {
-                        "audioInput": {
-                            "promptName": self._prompt_name,
-                            "contentName": self._audio_content_name,
-                            "content": b64,
+                event = json.dumps(
+                    {
+                        "event": {
+                            "audioInput": {
+                                "promptName": self._prompt_name,
+                                "contentName": self._audio_content_name,
+                                "content": b64,
+                            }
                         }
                     }
-                })
+                )
                 await self._send_raw(event)
             except asyncio.TimeoutError:
                 continue
@@ -320,7 +364,9 @@ class NovaSonicClient:
                 except Exception as e:
                     msg = str(e)
                     if "throttl" in msg.lower() or "quota" in msg.lower():
-                        await self._output_queue.put({"_error": "quota", "message": msg})
+                        await self._output_queue.put(
+                            {"_error": "quota", "message": msg}
+                        )
                     else:
                         print(f"[NovaSonic] Receive error: {e}")
                     break
@@ -340,7 +386,9 @@ class NovaSonicClient:
             if data is None:
                 return None
             if isinstance(data, dict) and data.get("_error") == "quota":
-                raise NovaSonicQuotaError(data.get("message", "Nova Sonic quota exceeded"))
+                raise NovaSonicQuotaError(
+                    data.get("message", "Nova Sonic quota exceeded")
+                )
 
             # Log relevant events
             event = data.get("event", {})
@@ -383,7 +431,11 @@ class NovaSonicClient:
             self._pending_tool_id = tu.get("toolUseId", "")
             raw_content = tu.get("content", "{}")
             try:
-                self._pending_tool_content = json.loads(raw_content) if isinstance(raw_content, str) else raw_content
+                self._pending_tool_content = (
+                    json.loads(raw_content)
+                    if isinstance(raw_content, str)
+                    else raw_content
+                )
             except json.JSONDecodeError:
                 self._pending_tool_content = {}
             return None  # Wait for contentEnd TOOL to fire
@@ -392,7 +444,11 @@ class NovaSonicClient:
         if "contentEnd" in event and event["contentEnd"].get("type") == "TOOL":
             if self._pending_tool_name:
                 name = self._pending_tool_name
-                args = self._pending_tool_content if isinstance(self._pending_tool_content, dict) else {}
+                args = (
+                    self._pending_tool_content
+                    if isinstance(self._pending_tool_content, dict)
+                    else {}
+                )
                 self._pending_tool_name = None
                 self._pending_tool_content = {}
                 return (name, args)
@@ -419,33 +475,41 @@ class NovaSonicClient:
         print(f"[NovaSonic] → toolResult for {name} ({tool_use_id[:8]}...)")
 
         # Tool content start
-        await self._send_raw(json.dumps({
-            "event": {
-                "contentStart": {
-                    "promptName": self._prompt_name,
-                    "contentName": content_name,
-                    "interactive": False,
-                    "type": "TOOL",
-                    "role": "TOOL",
-                    "toolResultInputConfiguration": {
-                        "toolUseId": tool_use_id,
-                        "type": "TEXT",
-                        "textInputConfiguration": {"mediaType": "text/plain"}
+        await self._send_raw(
+            json.dumps(
+                {
+                    "event": {
+                        "contentStart": {
+                            "promptName": self._prompt_name,
+                            "contentName": content_name,
+                            "interactive": False,
+                            "type": "TOOL",
+                            "role": "TOOL",
+                            "toolResultInputConfiguration": {
+                                "toolUseId": tool_use_id,
+                                "type": "TEXT",
+                                "textInputConfiguration": {"mediaType": "text/plain"},
+                            },
+                        }
                     }
                 }
-            }
-        }))
+            )
+        )
 
         # Tool result
-        await self._send_raw(json.dumps({
-            "event": {
-                "toolResult": {
-                    "promptName": self._prompt_name,
-                    "contentName": content_name,
-                    "content": result_str,
+        await self._send_raw(
+            json.dumps(
+                {
+                    "event": {
+                        "toolResult": {
+                            "promptName": self._prompt_name,
+                            "contentName": content_name,
+                            "content": result_str,
+                        }
+                    }
                 }
-            }
-        }))
+            )
+        )
 
         # Tool content end
         await self._send_raw(self._content_end_event(self._prompt_name, content_name))
@@ -465,8 +529,12 @@ class NovaSonicClient:
                 task.cancel()
 
         try:
-            await self._send_raw(self._content_end_event(self._prompt_name, self._audio_content_name))
-            await self._send_raw(json.dumps({"event": {"promptEnd": {"promptName": self._prompt_name}}}))
+            await self._send_raw(
+                self._content_end_event(self._prompt_name, self._audio_content_name)
+            )
+            await self._send_raw(
+                json.dumps({"event": {"promptEnd": {"promptName": self._prompt_name}}})
+            )
             await self._send_raw(json.dumps({"event": {"sessionEnd": {}}}))
             if self._stream:
                 await self._stream.input_stream.close()
@@ -476,88 +544,104 @@ class NovaSonicClient:
     # ── Event builders ───────────────────────────────────────────────────────
 
     def _session_start_event(self) -> str:
-        return json.dumps({
-            "event": {
-                "sessionStart": {
-                    "inferenceConfiguration": {
-                        "maxTokens": 1024,
-                        "topP": 0.9,
-                        "temperature": 0.3,
+        return json.dumps(
+            {
+                "event": {
+                    "sessionStart": {
+                        "inferenceConfiguration": {
+                            "maxTokens": 1024,
+                            "topP": 0.9,
+                            "temperature": 0.3,
+                        }
                     }
                 }
             }
-        })
+        )
 
     def _prompt_start_event(self) -> str:
-        return json.dumps({
-            "event": {
-                "promptStart": {
-                    "promptName": self._prompt_name,
-                    # No audioOutputConfiguration → no audio response
-                    "textOutputConfiguration": {"mediaType": "text/plain"},
-                    "toolUseOutputConfiguration": {"mediaType": "application/json"},
-                    "toolConfiguration": {"tools": _make_tool_config()},
+        return json.dumps(
+            {
+                "event": {
+                    "promptStart": {
+                        "promptName": self._prompt_name,
+                        # No audioOutputConfiguration → no audio response
+                        "textOutputConfiguration": {"mediaType": "text/plain"},
+                        "toolUseOutputConfiguration": {"mediaType": "application/json"},
+                        "toolConfiguration": {"tools": _make_tool_config()},
+                    }
                 }
             }
-        })
+        )
 
     def _system_prompt_event(self) -> str:
         content_name = str(uuid.uuid4())
         self._system_content_name = content_name
-        return json.dumps({
-            "event": {
-                "contentStart": {
-                    "promptName": self._prompt_name,
-                    "contentName": content_name,
-                    "type": "TEXT",
-                    "role": "SYSTEM",
-                    "interactive": False,
-                    "textInputConfiguration": {"mediaType": "text/plain"}
+        return (
+            json.dumps(
+                {
+                    "event": {
+                        "contentStart": {
+                            "promptName": self._prompt_name,
+                            "contentName": content_name,
+                            "type": "TEXT",
+                            "role": "SYSTEM",
+                            "interactive": False,
+                            "textInputConfiguration": {"mediaType": "text/plain"},
+                        }
+                    }
                 }
-            }
-        }) + "\n" + json.dumps({
-            "event": {
-                "textInput": {
-                    "promptName": self._prompt_name,
-                    "contentName": content_name,
-                    "content": SYSTEM_PROMPT,
+            )
+            + "\n"
+            + json.dumps(
+                {
+                    "event": {
+                        "textInput": {
+                            "promptName": self._prompt_name,
+                            "contentName": content_name,
+                            "content": SYSTEM_PROMPT,
+                        }
+                    }
                 }
-            }
-        })
+            )
+        )
 
     def _system_prompt_end_event(self) -> str:
         return self._content_end_event(self._prompt_name, self._system_content_name)
 
     def _audio_content_start_event(self) -> str:
-        return json.dumps({
-            "event": {
-                "contentStart": {
-                    "promptName": self._prompt_name,
-                    "contentName": self._audio_content_name,
-                    "type": "AUDIO",
-                    "interactive": True,
-                    "role": "USER",
-                    "audioInputConfiguration": {
-                        "mediaType": "audio/lpcm",
-                        "sampleRateHertz": 16000,
-                        "sampleSizeBits": 16,
-                        "channelCount": 1,
-                        "audioType": "SPEECH",
-                        "encoding": "base64",
+        return json.dumps(
+            {
+                "event": {
+                    "contentStart": {
+                        "promptName": self._prompt_name,
+                        "contentName": self._audio_content_name,
+                        "type": "AUDIO",
+                        "interactive": True,
+                        "role": "USER",
+                        "audioInputConfiguration": {
+                            "mediaType": "audio/lpcm",
+                            "sampleRateHertz": 16000,
+                            "sampleSizeBits": 16,
+                            "channelCount": 1,
+                            "audioType": "SPEECH",
+                            "encoding": "base64",
+                        },
                     }
                 }
             }
-        })
+        )
 
     def _content_end_event(self, prompt_name: str, content_name: str) -> str:
-        return json.dumps({
-            "event": {
-                "contentEnd": {
-                    "promptName": prompt_name,
-                    "contentName": content_name,
+        return json.dumps(
+            {
+                "event": {
+                    "contentEnd": {
+                        "promptName": prompt_name,
+                        "contentName": content_name,
+                    }
                 }
             }
-        })
+        )
 
     async def _send_raw(self, event_json: str):
         """Send a raw JSON event over the HTTP/2 stream."""

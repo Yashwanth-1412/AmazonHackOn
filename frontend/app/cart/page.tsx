@@ -46,7 +46,8 @@ export default function CartPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#f0f2f2]">
+    <div className="bg-[#f0f2f2]">
+      {/* Header */}
       <div className="bg-white sticky top-0 z-30 px-4 py-3 border-b border-[#e3e6e6] flex items-center gap-3">
         <button
           onClick={() => router.back()}
@@ -67,7 +68,8 @@ export default function CartPage() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 pb-36">
+      {/* Cart items */}
+      <div className="space-y-3">
         <AnimatePresence initial={false}>
           {items.map((item, index) => (
             <motion.div
@@ -165,16 +167,13 @@ export default function CartPage() {
         </div>
       </div>
 
-      <motion.div
-        initial={{ y: 100 }}
-        animate={{ y: 0 }}
-        className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-[#e3e6e6] px-4 py-3 shadow-lg"
-      >
+      {/* Checkout bar — sticky at bottom of scroll, inside frame */}
+      <div className="sticky bottom-0 z-40 bg-white border-t border-[#e3e6e6] px-4 py-3 shadow-lg">
         <div className="flex items-center justify-between mb-2 px-1">
           <span className="text-[#565959] text-sm">Total</span>
-          <motion.span key={total} className="font-black text-[#0f1111] text-lg">
+          <span className="font-black text-[#0f1111] text-lg">
             ₹{total}
-          </motion.span>
+          </span>
         </div>
         <button
           onClick={handleCheckout}
@@ -183,7 +182,7 @@ export default function CartPage() {
           <ShoppingBag size={18} />
           Proceed to Checkout →
         </button>
-      </motion.div>
+      </div>
     </div>
   )
 }

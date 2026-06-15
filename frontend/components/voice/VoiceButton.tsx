@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import { Mic, Square, Loader2 } from "lucide-react"
 import { useVoiceStore } from "@/store/voice"
 import { useVoiceWebSocket } from "@/hooks/useVoiceWebSocket"
+import { toast } from "sonner"
 
 export default function VoiceButton() {
   const isRecording = useVoiceStore((s) => s.isRecording)
@@ -18,6 +19,7 @@ export default function VoiceButton() {
     isHolding.current = true
     longPressTimer.current = setTimeout(() => {
       if (isHolding.current) {
+        toast("🎙️ Listening...", { duration: 1500, id: "voice-start" })
         startRecording()
       }
     }, 200)
@@ -28,11 +30,12 @@ export default function VoiceButton() {
     clearTimeout(longPressTimer.current)
     if (isRecording) {
       stopRecording()
+      toast.dismiss("voice-start")
     }
   }, [isRecording, stopRecording])
 
   return (
-    <div className="relative">
+    <div className="relative flex flex-col items-center">
       {/* Pulse ring when recording */}
       {isRecording && (
         <motion.div
@@ -46,12 +49,11 @@ export default function VoiceButton() {
         className={`
           relative z-10 flex items-center justify-center w-14 h-14 rounded-full
           shadow-lg border-2
-          ${
-            isRecording
-              ? "bg-red-500 border-red-400 shadow-red-500/30"
-              : isProcessing
-                ? "bg-[#ff9900] border-[#e68900]"
-                : "bg-white border-[#e3e6e6] hover:bg-[#f8f8f8]"
+          ${isRecording
+            ? "bg-red-500 border-red-400 shadow-red-500/30"
+            : isProcessing
+              ? "bg-[#ff9900] border-[#e68900]"
+              : "bg-white border-[#e3e6e6] hover:bg-[#f8f8f8]"
           }
           active:scale-95 transition-colors
         `}
@@ -99,7 +101,17 @@ export default function VoiceButton() {
           animate={{ opacity: 1, y: 0 }}
           className="text-[10px] text-center text-[#888c8c] mt-1.5 font-medium"
         >
-          {isConnected ? "Tap & Talk" : "Hold to Talk"}
+          Hold to Talk
+        </motion.p>
+      )}
+      {isRecording && (
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: [0.5, 1, 0.5] }}
+          transition={{ duration: 1.5, repeat: Infinity }}
+          className="text-[10px] text-center text-red-500 mt-1.5 font-bold"
+        >
+          Listening...
         </motion.p>
       )}
     </div>

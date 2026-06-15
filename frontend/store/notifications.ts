@@ -16,6 +16,7 @@ interface NotificationStore {
   setItems: (items: NotificationItem[]) => void
   dismiss: () => void
   show: () => void
+  reset: () => void
 }
 
 export const useNotificationStore = create<NotificationStore>((set) => ({
@@ -26,4 +27,5 @@ export const useNotificationStore = create<NotificationStore>((set) => ({
   setItems: (items) => set({ items, isVisible: items.length > 0 }),
   dismiss: () => set({ isVisible: false, dismissed: true }),
   show: () => set({ isVisible: true }),
+  reset: () => set({ items: [], isVisible: false, dismissed: false }),
 }))

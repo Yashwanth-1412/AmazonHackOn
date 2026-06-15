@@ -115,7 +115,7 @@ function CheckoutContent() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 pb-36">
+      <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 pb-4">
         {/* Notification context banner */}
         {source === "notification" && (
           <div className="mx-3 mt-3 bg-[#232f3e] rounded-xl px-4 py-3 flex items-center gap-3">
@@ -379,7 +379,7 @@ function CheckoutContent() {
       </div>
 
       {/* Sticky checkout footer */}
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white border-t border-[#e3e6e6] px-4 py-3">
+      <div className="sticky bottom-0 bg-white border-t border-[#e3e6e6] px-4 py-3 z-50 shadow-lg">
         <button
           onClick={handlePlaceOrder}
           className="w-full bg-[#ff9900] text-white font-black text-base py-4 rounded-xl active:bg-[#e68900] transition-colors shadow-lg flex items-center justify-center gap-2"

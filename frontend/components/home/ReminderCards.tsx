@@ -1,35 +1,52 @@
 "use client"
 
 import { ChevronRight } from "lucide-react"
-import type { APIReminder } from "@/lib/api"
+import { useCartStore } from "@/store/cart"
+import { toProduct, type APIReminder, type APIRunningLowItem } from "@/lib/api"
 
 const URGENCY_STYLES = {
-  high:   "border-[#cc0c39] bg-[#fff5f5]",
+  high: "border-[#cc0c39] bg-[#fff5f5]",
   medium: "border-[#ff9900] bg-[#fffbf0]",
-  low:    "border-[#067d62] bg-[#f0fff8]",
+  low: "border-[#067d62] bg-[#f0fff8]",
 }
 
 const URGENCY_BADGE = {
-  high:   "bg-[#cc0c39] text-white",
+  high: "bg-[#cc0c39] text-white",
   medium: "bg-[#ff9900] text-white",
-  low:    "bg-[#067d62] text-white",
+  low: "bg-[#067d62] text-white",
 }
 
 const TYPE_ICON: Record<string, string> = {
-  low_stock:   "⏳",
-  seasonal:    "🌧️",
-  routine:     "📅",
+  low_stock: "⏳",
+  seasonal: "🌧️",
+  routine: "📅",
   area_signal: "📍",
-  weather:     "🌤️",
+  weather: "🌤️",
 }
 
 interface Props {
   reminders: APIReminder[]
+  runningLowItems?: APIRunningLowItem[]
 }
 
-export default function ReminderCards({ reminders }: Props) {
+export default function ReminderCards({ reminders, runningLowItems = [] }: Props) {
+  const { addItem } = useCartStore()
+
   // Show top 4 only — prioritised by backend already
   const visible = reminders.slice(0, 4)
+
+  const handleCta = (reminder: APIReminder) => {
+    // Find the matching product in running low items
+    if (reminder.product_id) {
+      const match = runningLowItems.find(
+        (item) => item.product.id === reminder.product_id
+      )
+      if (match) {
+        const product = toProduct(match.product)
+        addItem(product)
+      }
+    }
+  }
 
   return (
     <div className="bg-white px-3 py-3">
@@ -41,18 +58,17 @@ export default function ReminderCards({ reminders }: Props) {
         {visible.map((r) => (
           <div
             key={r.id}
-            className={`flex-shrink-0 w-52 rounded-2xl border-2 p-3 cursor-pointer active:scale-[0.98] transition-transform ${
-              URGENCY_STYLES[r.urgency] ?? URGENCY_STYLES.low
-            }`}
+            className={`flex-shrink-0 w-52 rounded-2xl border-2 p-3 cursor-pointer active:scale-[0.98] transition-transform ${URGENCY_STYLES[r.urgency] ?? URGENCY_STYLES.low
+              }`}
+            onClick={() => handleCta(r)}
           >
             {/* Icon + badge */}
             <div className="flex items-center justify-between mb-2">
               <span className="text-2xl">{TYPE_ICON[r.type] ?? "💡"}</span>
               {r.days_left !== undefined && r.days_left <= 2 && (
                 <span
-                  className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${
-                    URGENCY_BADGE[r.urgency]
-                  }`}
+                  className={`text-[9px] font-black px-1.5 py-0.5 rounded-full ${URGENCY_BADGE[r.urgency]
+                    }`}
                 >
                   {r.days_left === 0 ? "NOW" : `${r.days_left}d`}
                 </span>

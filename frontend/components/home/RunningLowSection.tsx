@@ -1,5 +1,6 @@
 "use client"
 
+import { motion } from "framer-motion"
 import { useCartStore } from "@/store/cart"
 import ProductImage from "@/components/shared/ProductImage"
 import { toProduct, type APIRunningLowItem } from "@/lib/api"
@@ -23,29 +24,33 @@ export default function RunningLowSection({ items }: Props) {
       </div>
 
       <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-        {items.map((item) => {
-          const product  = toProduct(item.product)
-          const inCart   = cartItems.find((c) => c.product.id === product.id)
+        {items.map((item, i) => {
+          const product = toProduct(item.product)
+          const inCart = cartItems.find((c) => c.product.id === product.id)
           const daysLeft = item.days_left
 
           const urgencyColor =
             daysLeft <= 0 ? "border-[#cc0c39]"
-            : daysLeft <= 2 ? "border-[#ff9900]"
-            : "border-[#e3e6e6]"
+              : daysLeft <= 2 ? "border-[#ff9900]"
+                : "border-[#e3e6e6]"
 
           const dayLabel =
             daysLeft <= 0 ? "Out now"
-            : daysLeft === 1 ? "1 day left"
-            : `${daysLeft} days left`
+              : daysLeft === 1 ? "1 day left"
+                : `${daysLeft} days left`
 
           const dayBadge =
             daysLeft <= 0 ? "bg-[#cc0c39] text-white"
-            : daysLeft <= 2 ? "bg-[#ff9900] text-white"
-            : "bg-[#f0f2f2] text-[#565959]"
+              : daysLeft <= 2 ? "bg-[#ff9900] text-white"
+                : "bg-[#f0f2f2] text-[#565959]"
 
           return (
-            <div
+            <motion.div
               key={product.id}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: i * 0.06, duration: 0.3 }}
+              whileTap={{ scale: 0.97 }}
               className={`flex-shrink-0 w-36 rounded-2xl border-2 overflow-hidden ${urgencyColor}`}
             >
               {/* Product image */}
@@ -75,16 +80,15 @@ export default function RunningLowSection({ items }: Props) {
                 {/* Add button */}
                 <button
                   onClick={() => addItem(product)}
-                  className={`w-full mt-2 py-1.5 rounded-lg text-[11px] font-bold transition-colors ${
-                    inCart
-                      ? "bg-[#067d62] text-white"
-                      : "border-2 border-[#ff9900] text-[#ff9900] active:bg-[#fff3e0]"
-                  }`}
+                  className={`w-full mt-2 py-1.5 rounded-lg text-[11px] font-bold transition-colors ${inCart
+                    ? "bg-[#067d62] text-white"
+                    : "border-2 border-[#ff9900] text-[#ff9900] active:bg-[#fff3e0]"
+                    }`}
                 >
                   {inCart ? `In cart (${inCart.quantity})` : `ADD  ₹${product.price}`}
                 </button>
               </div>
-            </div>
+            </motion.div>
           )
         })}
       </div>

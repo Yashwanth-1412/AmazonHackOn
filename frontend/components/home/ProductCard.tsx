@@ -1,5 +1,6 @@
 "use client"
 
+import { motion, AnimatePresence } from "framer-motion"
 import { useCartStore } from "@/store/cart"
 import ProductImage from "@/components/shared/ProductImage"
 import type { Product } from "@/types"
@@ -31,9 +32,8 @@ export default function ProductCard({
 
   return (
     <div
-      className={`bg-white rounded-2xl overflow-hidden border border-[#e3e6e6] flex-shrink-0 ${
-        isSmall ? "w-36" : "w-40"
-      }`}
+      className={`bg-white rounded-2xl overflow-hidden border border-[#e3e6e6] flex-shrink-0 ${isSmall ? "w-36" : "w-40"
+        }`}
     >
       {/* Image area */}
       <div
@@ -83,30 +83,40 @@ export default function ProductCard({
           </div>
 
           {qty === 0 ? (
-            <button
+            <motion.button
+              whileTap={{ scale: 0.9 }}
               onClick={() => addItem(product)}
               className="bg-white border-2 border-[#ff9900] text-[#ff9900] text-[12px] font-bold px-2.5 py-1 rounded-lg active:bg-[#fff3e0] transition-colors"
             >
               ADD
-            </button>
+            </motion.button>
           ) : (
-            <div className="flex items-center gap-1 border-2 border-[#ff9900] rounded-lg overflow-hidden">
+            <motion.div
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              className="flex items-center gap-1 border-2 border-[#ff9900] rounded-lg overflow-hidden"
+            >
               <button
                 onClick={() => updateQuantity(product.id, qty - 1)}
                 className="px-2 py-0.5 text-[#ff9900] font-bold text-[14px] active:bg-[#fff3e0]"
               >
                 −
               </button>
-              <span className="text-[12px] font-bold text-[#0f1111] min-w-[14px] text-center">
+              <motion.span
+                key={qty}
+                initial={{ scale: 1.3 }}
+                animate={{ scale: 1 }}
+                className="text-[12px] font-bold text-[#0f1111] min-w-[14px] text-center"
+              >
                 {qty}
-              </span>
+              </motion.span>
               <button
                 onClick={() => addItem(product)}
                 className="px-2 py-0.5 text-[#ff9900] font-bold text-[14px] active:bg-[#fff3e0]"
               >
                 +
               </button>
-            </div>
+            </motion.div>
           )}
         </div>
       </div>

@@ -1,6 +1,7 @@
 import Header from "@/components/shared/Header"
 import CategoryStrip from "@/components/home/CategoryStrip"
 import RunningLowSection from "@/components/home/RunningLowSection"
+import RunningLowNotification from "@/components/home/RunningLowNotification"
 import ReminderCards from "@/components/home/ReminderCards"
 import FrequentlyBought from "@/components/home/FrequentlyBought"
 import PromoBanner from "@/components/home/PromoBanner"
@@ -15,14 +16,17 @@ export default async function HomePage() {
     homeData = null
   }
 
-  const reminders       = homeData?.reminders        ?? []
-  const runningLow      = homeData?.running_low       ?? []
+  const reminders = homeData?.reminders ?? []
+  const runningLow = homeData?.running_low ?? []
   const frequentlyBought = (homeData?.frequently_bought ?? []).map(toProduct)
-  const user            = homeData?.user
+  const user = homeData?.user
 
   return (
     <>
       <Header userName={user?.name} location={user?.location} />
+
+      {/* Running Low Notification Banner — "Order Now" adds to cart */}
+      <RunningLowNotification />
 
       {/* Search bar */}
       <div className="bg-white px-3 py-2 border-b border-[#e3e6e6]">
@@ -38,7 +42,7 @@ export default async function HomePage() {
 
         {/* AI Reminder Cards — context aggregator output */}
         {reminders.length > 0 && (
-          <ReminderCards reminders={reminders} />
+          <ReminderCards reminders={reminders} runningLowItems={runningLow} />
         )}
 
         {/* Running Low — consumption engine output */}

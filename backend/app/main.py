@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.routers import products, home, orders, voice, ramble, product_image
+from app.routers import products, home, orders, ramble, product_image
 
 app = FastAPI(
     title="Amazon Now API",
@@ -22,7 +22,6 @@ app.add_middleware(
 app.include_router(products.router)
 app.include_router(home.router)
 app.include_router(orders.router)
-app.include_router(voice.router)
 app.include_router(ramble.router)
 app.include_router(product_image.router)
 
