@@ -16,10 +16,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <script src="https://cdn.tailwindcss.com"></script>
       </head>
-      <body className="font-sans bg-[#f0f2f2]">
+      <body className="font-sans bg-[#f7f4ef]">
         {/* Phone frame */}
         <div className="flex justify-center min-h-screen">
-          <div className="w-full max-w-[430px] min-h-screen bg-[#f0f2f2] relative flex flex-col shadow-2xl">
+          <div className="w-full max-w-[430px] min-h-screen bg-[#f7f4ef] relative flex flex-col shadow-2xl">
             <main className="flex-1 overflow-y-auto pb-20 no-scrollbar">
               {children}
             </main>

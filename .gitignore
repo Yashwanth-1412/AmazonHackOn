@@ -39,3 +39,6 @@ backend/app/db/enrich_data.json
 backend/app/db/enrich_progress.json
 .playwright-mcp/
 *.png
+# Product images - regenerate with scrape_images_cdp.py
+backend/app/db/product_images/
+backend/app/db/image_cache.json

@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import { motion } from "framer-motion"
 import { Trash2, CheckCircle2 } from "lucide-react"
 import type { CanvasItem } from "@/store/ramble"
@@ -10,30 +11,29 @@ interface Props {
   onRemove?: (index: number) => void
 }
 
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+
 export default function CanvasItemCard({ item, index, onRemove }: Props) {
+  const [imgError, setImgError] = useState(false)
+  const imgUrl = `${API}/api/products/${item.product_id}/image`
+  const svgUrl = `${API}/api/products/${item.product_id}/image?svg=1`
+
   return (
     <motion.div
       initial={{ opacity: 0, x: 30, scale: 0.95 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       exit={{ opacity: 0, x: -30, scale: 0.95 }}
-      transition={{
-        delay: index * 0.05,
-        type: "spring",
-        stiffness: 400,
-        damping: 30,
-      }}
+      transition={{ delay: index * 0.05, type: "spring", stiffness: 400, damping: 30 }}
       className="flex items-center gap-3 bg-white rounded-xl px-3 py-2.5 shadow-sm border border-[#f0f2f2]"
     >
-      {/* Product icon — emoji based on category */}
-      <div className="w-10 h-10 rounded-lg bg-[#f8f8f8] flex items-center justify-center text-lg shrink-0 border border-[#e3e6e6]">
-        {item.category === "snacks" ? "🍟" :
-         item.category === "dairy" ? "🥛" :
-         item.category === "beverages" ? "🥤" :
-         item.category === "bakery" ? "🍞" :
-         item.category === "fruits-vegetables" ? "🥦" :
-         item.category === "household" ? "🧹" :
-         item.category === "personal-care" ? "🧴" :
-         "📦"}
+      {/* Product image — real photo or category SVG */}
+      <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0 border border-[#e3e6e6] bg-[#f8f8f8]">
+        <img
+          src={imgError ? svgUrl : imgUrl}
+          alt={item.name}
+          onError={() => setImgError(true)}
+          className="w-full h-full object-cover"
+        />
       </div>
 
       {/* Product info */}
@@ -56,7 +56,7 @@ export default function CanvasItemCard({ item, index, onRemove }: Props) {
       {onRemove && (
         <button
           onClick={() => onRemove(index)}
-          className="p-1.5 rounded-lg hover:bg-red-50 text-[#888c8c] hover:text-red-500 transition-colors"
+          className="p-1.5 rounded-lg hover:bg-red-50 text-[#888c8c] hover:text-red-500 transition-colors shrink-0"
         >
           <Trash2 size={14} />
         </button>

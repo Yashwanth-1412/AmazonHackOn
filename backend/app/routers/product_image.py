@@ -1,54 +1,29 @@
 """
-On-demand product image endpoint.
+Product image endpoint.
 
 GET /api/products/{product_id}/image
-  - Tries Clearbit logo for brand  (free, no API key)
-  - Falls back to colored SVG with brand initials
+  1. Serves locally saved image if exists (from scraping)
+  2. Falls back to a beautiful category + brand SVG card
 
 GET /api/products/{product_id}/image?svg=1
-  - Always returns SVG immediately (use as placeholder)
+  Always returns SVG immediately (use as placeholder)
 """
 
 import json
 import hashlib
-import asyncio
 from pathlib import Path
 from typing import Optional
 
-import aiohttp
 from fastapi import APIRouter, Response, Query
-from fastapi.responses import RedirectResponse
 
 router = APIRouter(prefix="/api/products", tags=["products"])
 
-# ── Cache ─────────────────────────────────────────────────────────────────────
-CACHE_PATH = Path(__file__).parent.parent / "db" / "image_cache.json"
-_mem_cache: dict[str, str] = {}
-_cache_loaded = False
-
-
-def _load_cache():
-    global _cache_loaded
-    if _cache_loaded:
-        return
-    if CACHE_PATH.exists():
-        try:
-            _mem_cache.update(json.loads(CACHE_PATH.read_text()))
-        except Exception:
-            pass
-    _cache_loaded = True
-
-
-def _save_cache():
-    tmp = CACHE_PATH.with_suffix(".tmp")
-    tmp.write_text(json.dumps(_mem_cache))
-    tmp.replace(CACHE_PATH)
-
-
-# ── Catalog lookup ────────────────────────────────────────────────────────────
+# ── Paths ─────────────────────────────────────────────────────────────────────
 CATALOG_PATH = Path(__file__).parent.parent / "db" / "catalog.json"
-_catalog: dict[str, dict] = {}
+IMAGE_DIR    = Path(__file__).parent.parent / "db" / "product_images"
 
+# ── Catalog cache ─────────────────────────────────────────────────────────────
+_catalog: dict[str, dict] = {}
 
 def _get_product(pid: str) -> Optional[dict]:
     if not _catalog:
@@ -59,177 +34,115 @@ def _get_product(pid: str) -> Optional[dict]:
             pass
     return _catalog.get(pid)
 
-
-# ── Brand → domain mapping (common Indian brands) ─────────────────────────────
-_BRAND_DOMAINS = {
-    "amul": "amul.com",
-    "nestle": "nestle.in",
-    "britannia": "britannia.co.in",
-    "parle": "parleproducts.com",
-    "dabur": "dabur.com",
-    "haldiram": "haldirams.com",
-    "itc": "itcportal.com",
-    "colgate": "colgate.co.in",
-    "unilever": "unilever.com",
-    "hindustan unilever": "hul.co.in",
-    "hul": "hul.co.in",
-    "godrej": "godrej.com",
-    "marico": "marico.com",
-    "himalaya": "himalayawellness.com",
-    "dettol": "dettol.co.in",
-    "surf excel": "surfexcel.in",
-    "lays": "lays.com",
-    "kurkure": "kurkure.in",
-    "pepsi": "pepsi.com",
-    "coca cola": "coca-cola.com",
-    "sprite": "sprite.com",
-    "maggi": "maggi.in",
-    "nescafe": "nescafe.co.in",
-    "fortune": "fortunefoods.com",
-    "aashirvaad": "aashirvaad.com",
-    "tata": "tata.com",
-    "patanjali": "patanjaliayurved.net",
-    "mother dairy": "motherdairy.com",
-    "kissan": "kissan.in",
-    "bisleri": "bisleri.com",
-    "paperboat": "hector-beverages.com",
-    "paper boat": "hector-beverages.com",
-    "cadbury": "cadbury.co.in",
-    "mondelez": "mondelezinternational.com",
-    "pepsodent": "pepsodent.in",
-    "lifebuoy": "lifebuoy.com",
-    "dove": "dove.com",
-    "nivea": "nivea.in",
-    "vaseline": "vaseline.com",
-    "johnson": "johnsonsbaby.com",
-    "vim": "vim.in",
-    "harpic": "harpic.co.in",
-    "ariel": "ariel.com",
-    "tide": "tide.com",
-    "frooti": "frooti.com",
-    "maaza": "maaza.in",
-    "tropicana": "tropicana.com",
-    "real": "dabur.com",
-    "oreo": "oreo.com",
-    "sunsilk": "sunsilk.com",
-    "head & shoulders": "headandshoulders.com",
-    "head and shoulders": "headandshoulders.com",
-    "pantene": "pantene.com",
+# ── Category config ───────────────────────────────────────────────────────────
+_CAT_CONFIG = {
+    "snacks":            {"emoji": "🍟", "bg": "#FF6B35", "accent": "#FF8C5A"},
+    "beverages":         {"emoji": "🥤", "bg": "#1E90FF", "accent": "#4CA9FF"},
+    "dairy":             {"emoji": "🥛", "bg": "#4ECDC4", "accent": "#6ED8D0"},
+    "bakery":            {"emoji": "🍞", "bg": "#F4A261", "accent": "#F6B87B"},
+    "fruits-vegetables": {"emoji": "🥦", "bg": "#2A9D8F", "accent": "#3DB89A"},
+    "grocery":           {"emoji": "🛒", "bg": "#E76F51", "accent": "#ED8B71"},
+    "household":         {"emoji": "🧹", "bg": "#457B9D", "accent": "#5A8FAB"},
+    "personal-care":     {"emoji": "🧴", "bg": "#6A4C93", "accent": "#8060AA"},
+    "pharmacy":          {"emoji": "💊", "bg": "#E63946", "accent": "#EC5963"},
 }
+_DEFAULT_CAT = {"emoji": "📦", "bg": "#264653", "accent": "#3A6374"}
 
+def _brand_color(brand: str) -> str:
+    """Deterministic accent color from brand name."""
+    colors = [
+        "#FF6B35","#1E90FF","#4ECDC4","#F4A261","#2A9D8F",
+        "#E76F51","#457B9D","#6A4C93","#E63946","#2ECC71",
+        "#E67E22","#9B59B6","#1ABC9C","#E74C3C","#3498DB",
+    ]
+    idx = int(hashlib.md5(brand.lower().encode()).hexdigest(), 16) % len(colors)
+    return colors[idx]
 
-def _brand_to_domain(brand: str) -> Optional[str]:
-    """Map brand name to its domain for Clearbit logo."""
-    b = brand.lower().strip()
-    # Direct match
-    if b in _BRAND_DOMAINS:
-        return _BRAND_DOMAINS[b]
-    # Partial match
-    for key, domain in _BRAND_DOMAINS.items():
-        if key in b or b in key:
-            return domain
-    # Generic: try brand.com
-    slug = b.replace(" ", "").replace("&", "").replace("'", "")
-    return f"{slug}.com"
+# ── SVG generator ─────────────────────────────────────────────────────────────
+def _make_svg(brand: str, name: str, category: str = "") -> str:
+    cfg = _CAT_CONFIG.get(category, _DEFAULT_CAT)
+    emoji  = cfg["emoji"]
+    bg     = _brand_color(brand) if brand else cfg["bg"]
+    accent = cfg["accent"]
 
+    # Truncate
+    brand_short = (brand[:14] + "…") if len(brand) > 14 else brand
+    name_short  = (name[:20]  + "…") if len(name)  > 20 else name
 
-async def _clearbit_logo(brand: str) -> Optional[str]:
-    """Return Clearbit logo URL if it exists (HTTP 200)."""
-    domain = _brand_to_domain(brand)
-    if not domain:
-        return None
-    url = f"https://logo.clearbit.com/{domain}"
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.head(url, timeout=aiohttp.ClientTimeout(total=4), allow_redirects=True) as r:
-                if r.status == 200:
-                    return url
-    except Exception:
-        pass
-    return None
-
-
-# ── SVG fallback ──────────────────────────────────────────────────────────────
-_COLORS = [
-    "#E63946", "#457B9D", "#2A9D8F", "#E9C46A", "#F4A261",
-    "#264653", "#6A4C93", "#1982C4", "#8AC926", "#FF595E",
-    "#FFCA3A", "#6BCB77", "#4D96FF", "#C77DFF", "#FF9F1C",
-]
-
-
-def _make_svg(brand: str, name: str, color: Optional[str] = None) -> str:
-    """Generate a colored SVG with brand initials."""
-    idx = int(hashlib.md5(brand.encode()).hexdigest(), 16) % len(_COLORS)
-    bg = color or _COLORS[idx]
-
-    b_init = (brand[0] if brand else "?").upper()
-    n_init = (name[0] if name else "P").upper()
-    initials = f"{b_init}{n_init}"
-
-    brand_short = (brand[:13] + "…") if len(brand) > 13 else brand
-    label = (name[:18] + "…") if len(name) > 18 else name
-
+    # Lighter version of bg for gradient
     return f"""<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
-  <rect width="200" height="200" rx="20" fill="{bg}"/>
-  <rect x="10" y="10" width="180" height="180" rx="14" fill="white" opacity="0.12"/>
-  <text x="100" y="98" font-family="system-ui,-apple-system,sans-serif" font-size="60"
-        font-weight="800" fill="white" text-anchor="middle" dominant-baseline="middle">{initials}</text>
-  <text x="100" y="145" font-family="system-ui,-apple-system,sans-serif" font-size="14"
-        font-weight="600" fill="white" text-anchor="middle" opacity="0.9">{brand_short}</text>
-  <text x="100" y="166" font-family="system-ui,-apple-system,sans-serif" font-size="11"
-        fill="white" text-anchor="middle" opacity="0.7">{label}</text>
-</svg>"""
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="{bg}"/>
+      <stop offset="100%" stop-color="{bg}cc"/>
+    </linearGradient>
+    <filter id="s">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.15"/>
+    </filter>
+  </defs>
 
+  <!-- Background -->
+  <rect width="200" height="200" rx="20" fill="url(#g)"/>
+
+  <!-- Subtle pattern dots -->
+  <circle cx="170" cy="30" r="40" fill="white" opacity="0.05"/>
+  <circle cx="30" cy="170" r="30" fill="white" opacity="0.05"/>
+
+  <!-- Icon circle -->
+  <circle cx="100" cy="78" r="38" fill="white" opacity="0.18" filter="url(#s)"/>
+
+  <!-- Emoji -->
+  <text x="100" y="92" font-size="38" text-anchor="middle" dominant-baseline="middle">{emoji}</text>
+
+  <!-- Divider -->
+  <rect x="30" y="124" width="140" height="1.5" rx="1" fill="white" opacity="0.25"/>
+
+  <!-- Brand name -->
+  <text x="100" y="145"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="13" font-weight="700"
+        fill="white" text-anchor="middle" opacity="0.95">{brand_short}</text>
+
+  <!-- Product name -->
+  <text x="100" y="166"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"
+        font-size="11" font-weight="400"
+        fill="white" text-anchor="middle" opacity="0.75">{name_short}</text>
+</svg>"""
 
 # ── Endpoint ──────────────────────────────────────────────────────────────────
 @router.get("/{product_id}/image")
 async def product_image(
     product_id: str,
-    svg: bool = Query(False, description="Return SVG immediately without searching"),
+    svg: bool = Query(False, description="Always return SVG"),
 ):
-    _load_cache()
+    product  = _get_product(product_id)
+    brand    = (product.get("brand")    or "") if product else ""
+    name     = (product.get("name")     or "") if product else "Product"
+    category = (product.get("category") or "") if product else ""
 
-    product = _get_product(product_id)
-    brand = (product.get("brand") or "?") if product else "?"
-    name  = (product.get("name")  or "Product") if product else "Product"
-
-    # Instant SVG mode — use as placeholder while real image loads
+    # Always SVG mode
     if svg or not product:
         return Response(
-            content=_make_svg(brand, name),
+            content=_make_svg(brand, name, category),
             media_type="image/svg+xml",
             headers={"Cache-Control": "public, max-age=86400"},
         )
 
-    # Cache hit
-    cached = _mem_cache.get(product_id)
-    if cached == "svg" or cached == "none":
-        return Response(
-            content=_make_svg(brand, name),
-            media_type="image/svg+xml",
-            headers={"Cache-Control": "public, max-age=86400"},
-        )
-    if cached:
-        return RedirectResponse(
-            url=cached, status_code=302,
-            headers={"Cache-Control": "public, max-age=86400"},
-        )
+    # Serve locally saved image (from scraping)
+    for ext in ["jpg", "webp", "png"]:
+        img_path = IMAGE_DIR / f"{product_id}.{ext}"
+        if img_path.exists():
+            mime = "image/webp" if ext == "webp" else f"image/{ext}"
+            return Response(
+                content=img_path.read_bytes(),
+                media_type=mime,
+                headers={"Cache-Control": "public, max-age=604800"},
+            )
 
-    # Try Clearbit logo
-    img_url = await _clearbit_logo(brand)
-
-    _mem_cache[product_id] = img_url or "svg"
-    if len(_mem_cache) % 100 == 0:
-        _save_cache()
-
-    if img_url:
-        return RedirectResponse(
-            url=img_url, status_code=302,
-            headers={"Cache-Control": "public, max-age=86400"},
-        )
-
+    # Category-based SVG fallback
     return Response(
-        content=_make_svg(brand, name),
+        content=_make_svg(brand, name, category),
         media_type="image/svg+xml",
         headers={"Cache-Control": "public, max-age=86400"},
     )
