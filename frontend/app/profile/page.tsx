@@ -1,4 +1,5 @@
 import { getHomeData } from "@/lib/api"
+import LogoutButton from "@/components/shared/LogoutButton"
 
 export default async function ProfilePage() {
   const data = await getHomeData("u001").catch(() => null)
@@ -72,6 +73,11 @@ export default async function ProfilePage() {
             <span className="text-[#888c8c]">›</span>
           </div>
         ))}
+      </div>
+
+      {/* Logout */}
+      <div className="bg-white mt-2 px-4 py-4">
+        <LogoutButton />
       </div>
 
       <div className="h-20" />
